@@ -1,0 +1,327 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Amber, Blue & Teal Jade Theme */
+    --background: 200 25% 10%;
+    --foreground: 45 30% 96%;
+
+    --card: 200 22% 14%;
+    --card-foreground: 45 30% 96%;
+
+    --popover: 200 22% 14%;
+    --popover-foreground: 45 30% 96%;
+
+    /* Teal Jade Primary */
+    --primary: 174 60% 40%;
+    --primary-foreground: 45 30% 98%;
+
+    /* Amber Secondary */
+    --secondary: 38 95% 50%;
+    --secondary-foreground: 200 25% 10%;
+
+    /* Muted Blue Tones */
+    --muted: 210 25% 18%;
+    --muted-foreground: 200 15% 65%;
+
+    /* Blue Accent */
+    --accent: 217 90% 55%;
+    --accent-foreground: 45 30% 98%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 45 30% 98%;
+
+    --border: 200 20% 22%;
+    --input: 200 20% 22%;
+    --ring: 174 60% 45%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar - Deep Blue Tones */
+    --sidebar-background: 200 25% 12%;
+    --sidebar-foreground: 45 30% 92%;
+    --sidebar-primary: 174 60% 45%;
+    --sidebar-primary-foreground: 45 30% 98%;
+    --sidebar-accent: 217 50% 25%;
+    --sidebar-accent-foreground: 45 30% 92%;
+    --sidebar-border: 200 20% 22%;
+    --sidebar-ring: 174 60% 45%;
+
+    /* Custom Amber Blue Teal Colors */
+    --amber-50: #FFFBEB;
+    --amber-100: #FEF3C7;
+    --amber-200: #FDE68A;
+    --amber-300: #FCD34D;
+    --amber-400: #FBBF24;
+    --amber-500: #F59E0B;
+    --amber-600: #D97706;
+    --amber-700: #B45309;
+    --amber-800: #92400E;
+    --amber-900: #78350F;
+
+    --blue-50: #EFF6FF;
+    --blue-100: #DBEAFE;
+    --blue-200: #BFDBFE;
+    --blue-300: #93C5FD;
+    --blue-400: #60A5FA;
+    --blue-500: #3B82F6;
+    --blue-600: #2563EB;
+    --blue-700: #1D4ED8;
+    --blue-800: #1E40AF;
+    --blue-900: #1E3A8A;
+
+    --teal-50: #F0FDFA;
+    --teal-100: #CCFBF1;
+    --teal-200: #99F6E4;
+    --teal-300: #5EEAD4;
+    --teal-400: #2DD4BF;
+    --teal-500: #14B8A6;
+    --teal-600: #0D9488;
+    --teal-700: #0F766E;
+    --teal-800: #115E59;
+    --teal-900: #134E4A;
+
+    --jade-50: #ECFDF5;
+    --jade-100: #D1FAE5;
+    --jade-200: #A7F3D0;
+    --jade-300: #6EE7B7;
+    --jade-400: #34D399;
+    --jade-500: #10B981;
+    --jade-600: #059669;
+    --jade-700: #047857;
+    --jade-800: #065F46;
+    --jade-900: #064E3B;
+  }
+
+  .dark {
+    /* Dark Amber Blue Teal Theme */
+    --background: 200 30% 8%;
+    --foreground: 45 25% 95%;
+
+    --card: 200 28% 12%;
+    --card-foreground: 45 25% 95%;
+
+    --popover: 200 28% 12%;
+    --popover-foreground: 45 25% 95%;
+
+    /* Teal Jade Primary */
+    --primary: 174 65% 45%;
+    --primary-foreground: 200 30% 8%;
+
+    /* Amber Secondary */
+    --secondary: 38 90% 55%;
+    --secondary-foreground: 200 30% 8%;
+
+    /* Muted Dark Blue */
+    --muted: 210 25% 15%;
+    --muted-foreground: 200 15% 60%;
+
+    /* Blue Accent */
+    --accent: 217 85% 50%;
+    --accent-foreground: 45 25% 95%;
+
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 45 25% 95%;
+
+    --border: 200 20% 18%;
+    --input: 200 20% 18%;
+    --ring: 174 65% 50%;
+
+    /* Sidebar Dark */
+    --sidebar-background: 200 30% 10%;
+    --sidebar-foreground: 45 25% 95%;
+    --sidebar-primary: 174 65% 45%;
+    --sidebar-primary-foreground: 200 30% 8%;
+    --sidebar-accent: 217 50% 20%;
+    --sidebar-accent-foreground: 45 25% 95%;
+    --sidebar-border: 200 20% 18%;
+    --sidebar-ring: 174 65% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans dark:bg-background dark:text-foreground;
+  }
+
+  pre, code {
+    @apply font-mono;
+  }
+}
+
+/* Custom utility classes for amber blue teal theme */
+.bg-amber-glow { background-color: var(--amber-500); }
+.bg-amber-light { background-color: var(--amber-300); }
+.bg-amber-dark { background-color: var(--amber-700); }
+.bg-blue-glow { background-color: var(--blue-500); }
+.bg-blue-light { background-color: var(--blue-300); }
+.bg-blue-dark { background-color: var(--blue-800); }
+.bg-teal-glow { background-color: var(--teal-500); }
+.bg-teal-light { background-color: var(--teal-300); }
+.bg-teal-dark { background-color: var(--teal-700); }
+.bg-jade-glow { background-color: var(--jade-500); }
+.bg-jade-light { background-color: var(--jade-300); }
+.bg-jade-dark { background-color: var(--jade-700); }
+
+.text-amber-glow { color: var(--amber-500); }
+.text-amber-light { color: var(--amber-300); }
+.text-amber-dark { color: var(--amber-700); }
+.text-blue-glow { color: var(--blue-500); }
+.text-blue-light { color: var(--blue-300); }
+.text-blue-dark { color: var(--blue-800); }
+.text-teal-glow { color: var(--teal-500); }
+.text-teal-light { color: var(--teal-300); }
+.text-teal-dark { color: var(--teal-700); }
+.text-jade-glow { color: var(--jade-500); }
+.text-jade-light { color: var(--jade-300); }
+.text-jade-dark { color: var(--jade-700); }
+
+.border-amber-glow { border-color: var(--amber-500); }
+.border-amber-light { border-color: var(--amber-300); }
+.border-blue-glow { border-color: var(--blue-500); }
+.border-blue-light { border-color: var(--blue-300); }
+.border-teal-glow { border-color: var(--teal-500); }
+.border-teal-light { border-color: var(--teal-300); }
+.border-jade-glow { border-color: var(--jade-500); }
+.border-jade-light { border-color: var(--jade-300); }
+
+/* Gradient utilities */
+.gradient-amber-teal {
+  background: linear-gradient(135deg, var(--amber-500) 0%, var(--teal-500) 100%);
+}
+
+.gradient-blue-teal {
+  background: linear-gradient(135deg, var(--blue-500) 0%, var(--teal-500) 100%);
+}
+
+.gradient-amber-blue {
+  background: linear-gradient(135deg, var(--amber-500) 0%, var(--blue-500) 100%);
+}
+
+.gradient-teal-jade {
+  background: linear-gradient(135deg, var(--teal-500) 0%, var(--jade-500) 100%);
+}
+
+/* Glow effects */
+.glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), 0 0 40px rgba(245, 158, 11, 0.2);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+}
+
+.glow-teal {
+  box-shadow: 0 0 20px rgba(20, 184, 166, 0.4), 0 0 40px rgba(20, 184, 166, 0.2);
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.5), 0 0 20px rgba(245, 158, 11, 0.3);
+}
+
+.text-glow-blue {
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.text-glow-teal {
+  text-shadow: 0 0 10px rgba(20, 184, 166, 0.5), 0 0 20px rgba(20, 184, 166, 0.3);
+}
+
+.markdown-editor {
+  @apply font-mono text-base leading-relaxed;
+}
+
+.markdown-preview {
+  @apply prose max-w-none prose-emerald dark:prose-invert;
+}
+
+.markdown-preview pre {
+  @apply bg-secondary p-4 rounded-md overflow-x-auto;
+}
+
+.markdown-preview code {
+  @apply text-sm font-mono text-primary;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  @apply font-sans font-semibold text-foreground;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  @apply my-4 ml-6;
+}
+
+/* Animated gradient background */
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Float animation for particles */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0) translateX(0);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 1;
+  }
+  50% { 
+    transform: translateY(-40px) translateX(-5px);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(-20px) translateX(-10px);
+    opacity: 1;
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Shimmer effect for text */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}
+
+/* Pulse glow effect */
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), 0 0 40px rgba(245, 158, 11, 0.2);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.6), 0 0 60px rgba(245, 158, 11, 0.3);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

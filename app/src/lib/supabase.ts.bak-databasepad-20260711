@@ -1,0 +1,10 @@
+import { createClient } from '@supabase/supabase-js';
+
+
+// Initialize database client
+const supabaseUrl = 'https://haexcwskyxdhtdlruvuk.databasepad.com';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjY0OThhMjc2LWJhYzItNDAxOC05ZmVjLWVkMTU5ZjVmYjg4NCJ9.eyJwcm9qZWN0SWQiOiJoYWV4Y3dza3l4ZGh0ZGxydXZ1ayIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzY2ODM3MzI5LCJleHAiOjIwODIxOTczMjksImlzcyI6ImZhbW91cy5kYXRhYmFzZXBhZCIsImF1ZCI6ImZhbW91cy5jbGllbnRzIn0.cy-JiG5GXqnOtP0IrpjfUiiNja3Ui4RnjjfAgWKNiPU';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+
+export { supabase };

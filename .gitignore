@@ -1,0 +1,17 @@
+# Secrets — never commit
+.db.local
+.mcp.json
+*.local
+.env
+.env.*
+!.env.example
+
+# Dependencies / build
+node_modules
+dist
+dist-ssr
+
+# OS / editor
+.DS_Store
+.vscode/*
+.idea

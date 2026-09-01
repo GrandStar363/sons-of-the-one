@@ -1,0 +1,54 @@
+{
+  "name": "Focused Teaching Companion - Bible Study",
+  "short_name": "Bible Study",
+  "description": "An educational tool designed to enhance learning by focusing on scripture study.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c1929",
+  "theme_color": "#14B8A6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/placeholder.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/placeholder.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "books", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "scope": "/",
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Read Bible",
+      "short_name": "Bible",
+      "description": "Open the Bible reader",
+      "url": "/?section=bible",
+      "icons": [{ "src": "/placeholder.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Bookmarks",
+      "short_name": "Bookmarks",
+      "description": "View your saved bookmarks",
+      "url": "/?section=bookmarks",
+      "icons": [{ "src": "/placeholder.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Daily Reading",
+      "short_name": "Daily",
+      "description": "Continue your daily reading plan",
+      "url": "/?section=daily-reading",
+      "icons": [{ "src": "/placeholder.svg", "sizes": "96x96" }]
+    }
+  ]
+}
