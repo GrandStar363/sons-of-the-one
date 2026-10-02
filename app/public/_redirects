@@ -1,0 +1,3 @@
+# Netlify / Cloudflare Pages: serve the SPA for every route so /admin and
+# /reset-password don't 404 on refresh or when opened from an email link.
+/*    /index.html   200

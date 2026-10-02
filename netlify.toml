@@ -1,0 +1,12 @@
+# Netlify build settings. The web app lives in app/ (the repo root also holds
+# the Supabase backend, docs and migrations, which Netlify doesn't need).
+[build]
+  base    = "app"
+  command = "npm run build"
+  publish = "dist"          # relative to base → app/dist
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA routing (/admin, /reset-password) and service-worker caching are handled
+# by app/public/_redirects and app/public/_headers.

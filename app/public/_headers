@@ -1,0 +1,4 @@
+# Netlify / Cloudflare Pages: never cache the service worker, so new
+# deployments reach users instead of being pinned to an old version.
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
