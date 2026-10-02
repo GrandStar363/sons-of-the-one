@@ -13,10 +13,10 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 // Recurring donation price IDs
 const RECURRING_PRICES: Record<number, string> = {
-  1000: 'price_1SjRj6HzXgTRD3HA3id9GyMs',   // $10/month
-  2500: 'price_1SjRj6HzXgTRD3HATcvs3SOj',   // $25/month
-  5000: 'price_1SjRj7HzXgTRD3HA9XhSud0p',   // $50/month
-  10000: 'price_1SjRj7HzXgTRD3HAqblj8dBe'   // $100/month
+  1000: 'price_1UGLkaLfsMwtRrDI5KB5avv2',   // $10/month
+  2500: 'price_1UGLmiLfsMwtRrDIM37JQZ0Y',   // $25/month
+  5000: 'price_1UGLn5LfsMwtRrDI1MzrU3OX',   // $50/month
+  10000: 'price_1UGLnWLfsMwtRrDIvAFEIrqw'   // $100/month
 };
 
 Deno.serve(async (req) => {

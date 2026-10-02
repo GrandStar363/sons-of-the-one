@@ -133,13 +133,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthSuccess, o
             privacy_policy_accepted: true,
             privacy_policy_accepted_at: termsAcceptedAt,
           },
+          // Where the confirmation link returns the user (must be listed in
+          // Supabase → Authentication → URL Configuration → Redirect URLs).
+          emailRedirectTo: window.location.origin,
         },
       });
 
       if (error) throw error;
 
-      if (data.user) {
-        setSuccess('Account created successfully! Please check your email to verify your account.');
+      // Supabase reports an already-registered email as a user with no
+      // identities (instead of an error) to avoid leaking which emails exist.
+      if (data.user && data.user.identities?.length === 0) {
+        setError('An account with this email already exists. Please sign in instead.');
+        return;
+      }
+
+      if (data.session) {
+        setSuccess('Account created! Signing you in…');
+      } else if (data.user) {
+        setSuccess(`Almost there! We've sent a confirmation link to ${email.trim()}. Click it to activate your account, then sign in.`);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create account');

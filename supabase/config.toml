@@ -1,0 +1,61 @@
+# Supabase CLI config for the hosted project.
+# Generated during handover cleanup. `supabase link --project-ref` targets this.
+project_id = "gkjbrfwidybzptvgifxz"
+
+# --- Edge functions ---------------------------------------------------------
+# verify_jwt = false on every function on purpose:
+#   * admin-* functions authenticate with their own opaque admin-session token
+#     (see functions/_shared/admin.ts), not a Supabase JWT.
+#   * public endpoints (donations, church-finder, trivia, referrals) must be
+#     callable by anonymous visitors.
+#   * the project uses the new sb_publishable_ key, which should not be relied
+#     on to satisfy gateway JWT verification.
+# FOLLOW-UP: per-function hardening for the ones that read by email/userId
+# (get-donation-history, get-subscription-status) — see db/README.md.
+
+[functions.activity-tracker]
+verify_jwt = false
+[functions.admin-analytics]
+verify_jwt = false
+[functions.admin-auth]
+verify_jwt = false
+[functions.admin-contact-messages]
+verify_jwt = false
+[functions.admin-content]
+verify_jwt = false
+[functions.admin-email-status]
+verify_jwt = false
+[functions.admin-prayer-requests]
+verify_jwt = false
+[functions.admin-users]
+verify_jwt = false
+[functions.cancel-subscription]
+verify_jwt = false
+[functions.church-finder]
+verify_jwt = false
+[functions.create-donation]
+verify_jwt = false
+[functions.create-recurring-donation]
+verify_jwt = false
+[functions.create-subscription]
+verify_jwt = false
+[functions.daily-trivia]
+verify_jwt = false
+[functions.get-donation-history]
+verify_jwt = false
+[functions.get-subscription-status]
+verify_jwt = false
+[functions.multiplayer-trivia]
+verify_jwt = false
+[functions.referral-system]
+verify_jwt = false
+[functions.send-daily-notification]
+verify_jwt = false
+[functions.send-daily-reminders]
+verify_jwt = false
+[functions.send-devotional-email]
+verify_jwt = false
+[functions.send-donation-receipt]
+verify_jwt = false
+[functions.tournament-system]
+verify_jwt = false

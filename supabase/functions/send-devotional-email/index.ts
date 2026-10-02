@@ -114,7 +114,7 @@ Deno.serve(handler(async (body) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Sons of God <devotional@divergentproject.org>',
+        from: 'Sons of God <devotional@sonoftheonegroup.com>',
         to: email, subject, html,
       }),
     });

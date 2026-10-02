@@ -296,7 +296,7 @@ function generateEmailHTML(data: {
               </p>
               <p style="color: #9ca3af; font-size: 12px; margin: 0;">
                 Questions about your donation? Contact us at<br />
-                <a href="mailto:support@divinewordbible.app" style="color: #f43f5e; text-decoration: none;">support@divinewordbible.app</a>
+                <a href="mailto:support@sonoftheonegroup.com" style="color: #f43f5e; text-decoration: none;">support@sonoftheonegroup.com</a>
               </p>
               <p style="color: #d1d5db; font-size: 11px; margin: 16px 0 0 0;">
                 &copy; ${new Date().getFullYear()} Divine Word Bible. All rights reserved.
@@ -367,7 +367,7 @@ Your generous gift helps us:
 ---
 
 Questions about your donation?
-Contact us at support@divinewordbible.app
+Contact us at support@sonoftheonegroup.com
 
 (c) ${new Date().getFullYear()} Divine Word Bible. All rights reserved.
 `;
@@ -484,12 +484,12 @@ Deno.serve(async (req) => {
 
     // Send email via Resend API with retry logic
     const emailResult = await sendEmailWithRetry(resendApiKey, {
-      from: 'Divine Word Bible <receipts@divinewordbible.app>',
+      from: 'Sons of the One <receipts@sonoftheonegroup.com>',
       to: [donationData.email],
       subject: `Thank You for Your Donation - Receipt #${receiptNumber}`,
       html: emailHTML,
       text: emailText,
-      replyTo: 'support@divinewordbible.app'
+      replyTo: 'support@sonoftheonegroup.com'
     });
 
     // Update donation record with receipt info

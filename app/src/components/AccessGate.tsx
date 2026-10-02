@@ -131,25 +131,29 @@ const AccessGate: React.FC<AccessGateProps> = ({ onAuthSuccess, onNavigateToTerm
             privacy_policy_accepted: true,
             privacy_policy_accepted_at: termsAcceptedAt,
           },
+          // Where the confirmation link returns the user (must be listed in
+          // Supabase → Authentication → URL Configuration → Redirect URLs).
+          emailRedirectTo: window.location.origin,
         },
       });
 
       if (error) throw error;
 
-      if (data.user) {
-        // Create user_data record with terms acceptance
-        await supabase.from('user_data').insert({
-          user_id: data.user.id,
-          bookmarks: [],
-          highlights: [],
-          notes: {},
-          plan_progress: {},
-        });
+      // Supabase reports an already-registered email as a user with no
+      // identities (instead of an error) to avoid leaking which emails exist.
+      if (data.user && data.user.identities?.length === 0) {
+        setError('An account with this email already exists. Please sign in instead.');
+        return;
+      }
 
-        setSuccess('Account created successfully! You can now sign in.');
-        setTimeout(() => {
-          handleModeChange('signin');
-        }, 2000);
+      if (data.session) {
+        // Email confirmation is off: signed in immediately; the auth listener
+        // moves them into the app.
+        await supabase.from('user_data').upsert({ user_id: data.session.user.id }, { onConflict: 'user_id' });
+        setSuccess('Account created! Signing you in…');
+      } else if (data.user) {
+        // Email confirmation is on: no session until the link is clicked.
+        setSuccess(`Almost there! We've sent a confirmation link to ${email.trim()}. Click it to activate your account, then sign in.`);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create account');

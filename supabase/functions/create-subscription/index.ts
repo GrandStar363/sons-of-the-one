@@ -8,8 +8,8 @@ export const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
-const MONTHLY_PRICE_ID = 'price_1SjRTnHzXgTRD3HAmkJ6L4ov';
-const ANNUAL_PRICE_ID = 'price_1SjRTnHzXgTRD3HA5YTQnY3H';
+const MONTHLY_PRICE_ID = 'price_1UGLivLfsMwtRrDIWoukyPIT';  // Premium Monthly $9.99
+const ANNUAL_PRICE_ID = 'price_1UGLjtLfsMwtRrDIhPr5vfyK';   // Premium Annual $79.99
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
