@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { supabase } from '@/lib/supabase';
 import { stripePromise, stripeEnabled } from '@/lib/stripe';
+import { functionErrorMessage } from '@/lib/utils';
 import { X, Heart, Check, Sparkles, Users, Globe, BookOpen, Mail, Share2, Download, ExternalLink, AlertCircle, RefreshCw, FileText } from 'lucide-react';
 
 interface PaymentFormProps {
@@ -149,8 +150,9 @@ export default function DonationModal({ isOpen, onClose }: DonationModalProps) {
       const { data, error: fnError } = await supabase.functions.invoke('create-donation', {
         body: { amount, email, name, message, showOnWall }
       });
-      if (fnError || data?.error) throw new Error(data?.error || fnError?.message);
-      
+      if (fnError) throw new Error(await functionErrorMessage(fnError, 'Could not start your donation'));
+      if (data?.error) throw new Error(data.error);
+
       setClientSecret(data.clientSecret);
       setDonationId(data.donationId);
       setStep('payment');

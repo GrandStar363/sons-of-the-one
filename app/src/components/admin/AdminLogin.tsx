@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, Shield, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { functionErrorMessage } from '@/lib/utils';
 
 interface AdminLoginProps {
   onLogin: (admin: any, token: string) => void;
@@ -23,7 +24,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
         body: { action: 'login', email, password }
       });
 
-      if (fnError) throw fnError;
+      if (fnError) throw new Error(await functionErrorMessage(fnError, 'Login failed'));
       if (!data?.success) throw new Error(data?.error || 'Login failed');
 
       // Store token in localStorage
