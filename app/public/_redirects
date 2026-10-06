@@ -1,3 +1,9 @@
+# One official address: send the default Netlify hostname to the custom domain
+# (keeps logins, which are stored per-address, and search results in one place).
+# Must come before the catch-all below. Deploy previews use other hostnames and
+# are unaffected.
+https://sons-of-the-one.netlify.app/*  https://sonoftheonegroup.com/:splat  301!
+
 # Netlify / Cloudflare Pages: serve the SPA for every route so /admin and
 # /reset-password don't 404 on refresh or when opened from an email link.
 /*    /index.html   200

@@ -1,7 +1,7 @@
 {
-  "name": "Focused Teaching Companion - Bible Study",
-  "short_name": "Bible Study",
-  "description": "An educational tool designed to enhance learning by focusing on scripture study.",
+  "name": "Sons of the One",
+  "short_name": "Sons of One",
+  "description": "Read the Bible, follow daily devotionals and reading plans, share prayer requests, and grow in faith with the Sons of the One community.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0c1929",
