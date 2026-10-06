@@ -23,3 +23,41 @@ export async function mapsRequest(path: string, params: Record<string, string>):
   const res = await fetch(`${MAPS_API}/${path}?${qs.toString()}`);
   return await res.json();
 }
+
+// Places API (New).
+//
+// The legacy Places endpoints (place/nearbysearch, place/details) cannot be
+// enabled on Google Cloud projects created after March 2025 -- they return
+// REQUEST_DENIED "You're calling a legacy API". Places (New) lives on a
+// different host, takes the key in a header, and requires a field mask naming
+// exactly which fields to return (fields not listed are not billed).
+const PLACES_API = 'https://places.googleapis.com/v1';
+
+export class PlacesError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export async function placesRequest(
+  path: string,
+  fieldMask: string,
+  body?: Record<string, unknown>,
+): Promise<any> {
+  const res = await fetch(`${PLACES_API}/${path}`, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': key(),
+      'X-Goog-FieldMask': fieldMask,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new PlacesError(data?.error?.message ?? `Places API error ${res.status}`, res.status);
+  }
+  return data;
+}
