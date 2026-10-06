@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sons of the One — Walking in Divine Identity</title>
-    <meta name="description" content="Read the Bible, follow daily devotionals and reading plans, share prayer requests, and grow in faith with the Sons of the One community." />
+    <title>Sons of the One — Bible Study, Daily Devotionals &amp; Prayer Community</title>
+    <meta name="description" content="Sons of the One: read the King James Bible, follow daily devotionals and reading plans, share prayer requests, and grow in faith as sons of God (Romans 8:14). Start with a free trial." />
+    <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://sonoftheonegroup.com/" />
     <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
 
@@ -28,10 +29,59 @@
     <meta property="og:url" content="https://sonoftheonegroup.com/" />
 
     <meta name="twitter:card" content="summary" />
+
+    <!-- Structured data: tells search engines who publishes the site. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://sonoftheonegroup.com/#organization",
+            "name": "Sons' of the One LLC",
+            "alternateName": ["Sons of the One", "Son of the One Group"],
+            "url": "https://sonoftheonegroup.com/"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://sonoftheonegroup.com/#website",
+            "name": "Sons of the One",
+            "url": "https://sonoftheonegroup.com/",
+            "inLanguage": "en",
+            "publisher": { "@id": "https://sonoftheonegroup.com/#organization" }
+          }
+        ]
+      }
+    </script>
   </head>
 
-  <body>
-    <div id="root"></div>
+  <body style="margin:0;background:#0c1929">
+    <!-- Content inside #root is what search engines and link previews read
+         without running JavaScript, and what visitors see for the moment before
+         the app loads. React replaces it on start-up. Keep it truthful and in
+         step with the app's features. -->
+    <div id="root">
+      <main style="max-width:760px;margin:0 auto;padding:56px 24px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color:#e5e7eb;line-height:1.6">
+        <p style="margin:0;color:#14B8A6;font-size:14px;letter-spacing:.04em">Walking in Divine Identity</p>
+        <h1 style="margin:8px 0 16px;font-family:Georgia,serif;font-size:40px;line-height:1.15;color:#fff">Sons of the One — <span style="color:#F59E0B">Bible study, devotionals &amp; prayer community</span></h1>
+        <p style="font-size:18px;color:#cbd5e1">“For as many as are led by the Spirit of God, they are the sons of God.” — Romans 8:14 (KJV)</p>
+        <p>Sons of the One is a Christian Bible study community from Sons' of the One LLC, built around sonship and discipleship: walking in the Spirit and not in the flesh. Read the Scriptures, pray together, and grow in your spiritual walk every day.</p>
+        <h2 style="font-size:22px;color:#fff;margin-top:32px">What you'll find</h2>
+        <ul style="padding-left:20px">
+          <li><strong>The Holy Bible</strong> — read the King James Version (1611) and compare modern translations, with bookmarks, highlights and notes.</li>
+          <li><strong>Daily devotionals &amp; verse of the day</strong> — start each day with scripture and reflection.</li>
+          <li><strong>Reading plans</strong> — follow a daily Bible reading plan and track your progress.</li>
+          <li><strong>Community prayer wall</strong> — share prayer requests and pray for fellow believers.</li>
+          <li><strong>Personal journal</strong> — record your spiritual journey, prayers and insights.</li>
+          <li><strong>Scripture memory</strong> — memorize verses with review and streaks.</li>
+          <li><strong>Lessons &amp; certificates</strong> — teachings on sonship, discipleship and baptism.</li>
+          <li><strong>Bible trivia</strong> — daily challenges, multiplayer games and tournaments.</li>
+          <li><strong>Church finder</strong> — find a church near you.</li>
+        </ul>
+        <p style="margin-top:32px"><a href="/" style="display:inline-block;background:#14B8A6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600">Join the family — start your free trial</a></p>
+        <p style="margin-top:40px;font-size:13px;color:#94a3b8">© Sons' of the One LLC · sonoftheonegroup.com</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

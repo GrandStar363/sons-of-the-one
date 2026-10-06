@@ -1,14 +1,7 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+# Private / utility pages: keep them out of search results.
+Disallow: /admin
+Disallow: /reset-password
+
+Sitemap: https://sonoftheonegroup.com/sitemap.xml
