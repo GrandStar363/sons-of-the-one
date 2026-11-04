@@ -57,7 +57,7 @@ const DailyDevotional: React.FC<DailyDevotionalProps> = ({ onReadMore }) => {
               <div className="absolute inset-0 bg-gradient-to-t from-[#0c1929] via-transparent to-transparent" />
             </div>
             {/* Floating Card */}
-            <div className="absolute -bottom-6 -right-6 sm:bottom-6 sm:right-6 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] text-white p-4 rounded-xl shadow-xl max-w-[200px] glow-teal">
+            <div className="absolute -bottom-6 right-3 sm:bottom-6 sm:right-6 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] text-white p-4 rounded-xl shadow-xl max-w-[200px] glow-teal">
               <div className="flex items-center space-x-2 mb-2">
                 <Sun className="w-5 h-5 text-[#FCD34D]" />
                 <span className="font-semibold text-sm">Daily Verse</span>

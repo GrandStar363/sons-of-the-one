@@ -702,6 +702,23 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
             </div>
           </div>
 
+          {/* Mobile Features — on desktop these sit in the left column, which
+              phones don't show, so repeat them here for small screens. */}
+          <div className="lg:hidden mt-8 grid grid-cols-2 gap-3">
+            {features.map((feature) => (
+              <div
+                key={feature.title}
+                className="bg-white/5 border border-[#14B8A6]/20 rounded-xl p-4"
+              >
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#14B8A6]/20 to-[#14B8A6]/10 flex items-center justify-center mb-2">
+                  <feature.icon className="w-5 h-5 text-[#14B8A6]" />
+                </div>
+                <h3 className="text-white font-semibold text-sm mb-1">{feature.title}</h3>
+                <p className="text-white/50 text-xs leading-snug">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+
           {/* Mobile Scripture */}
           <div className="lg:hidden mt-8 p-4 bg-gradient-to-r from-[#14B8A6]/10 to-transparent border-l-4 border-[#14B8A6] rounded-r-xl">
             <p className="text-white/70 italic text-sm mb-1">

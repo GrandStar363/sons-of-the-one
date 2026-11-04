@@ -398,7 +398,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0c1929] via-[#0f2942] to-[#0c1929]">
+    // overflow-x-clip: decorative glows and badges must never make the page
+    // wider than a phone screen (it then slides sideways and cuts text off on
+    // the right). `clip`, unlike `hidden`, doesn't break sticky elements.
+    <div className="min-h-screen overflow-x-clip bg-gradient-to-b from-[#0c1929] via-[#0f2942] to-[#0c1929]">
       {/* Header */}
       <Header
         onNavigate={handleNavigate}
