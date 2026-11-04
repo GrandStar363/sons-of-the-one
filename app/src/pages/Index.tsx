@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
 import AuthPage from '@/components/AuthPage';
+import WelcomeClassroom from '@/components/WelcomeClassroom';
 import TermsOfService from '@/components/TermsOfService';
 import PrivacyPolicy from '@/components/PrivacyPolicy';
 import { AppProvider } from '@/contexts/AppContext';
@@ -9,7 +10,20 @@ import { Loader2 } from 'lucide-react';
 
 type ViewMode = 'auth' | 'terms' | 'privacy' | 'app';
 
+// The "One Classroom" welcome page opens each visit (once per browser tab
+// session), then "Enter The Classroom" goes on into the app or to sign-in.
+const ENTERED_KEY = 'sog-entered-classroom';
+
+function hasEnteredClassroom(): boolean {
+  try {
+    return sessionStorage.getItem(ENTERED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 const Index: React.FC = () => {
+  const [showWelcome, setShowWelcome] = useState(() => !hasEnteredClassroom());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
@@ -80,6 +94,22 @@ const Index: React.FC = () => {
       setViewMode('auth');
     }
   }, [isAuthenticated]);
+
+  const handleEnterClassroom = useCallback(() => {
+    try {
+      sessionStorage.setItem(ENTERED_KEY, '1');
+    } catch {
+      // Private browsing: they'll just see the welcome again next load.
+    }
+    setShowWelcome(false);
+    window.scrollTo({ top: 0 });
+  }, []);
+
+  // Welcome page first. It doesn't depend on the auth check, so it renders
+  // immediately while the session is restored in the background.
+  if (showWelcome) {
+    return <WelcomeClassroom onEnter={handleEnterClassroom} />;
+  }
 
   // Show loading spinner while checking auth state
   if (loading) {
