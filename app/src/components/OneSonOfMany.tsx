@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SectionShare from './SectionShare';
 import { Users, Crown, Heart, Sparkles, ChevronRight, BookOpen } from 'lucide-react';
 interface OneSonOfManyProps {
   onReadVerse: (reference: string) => void;
@@ -113,6 +114,12 @@ const OneSonOfMany: React.FC<OneSonOfManyProps> = ({
               <OneSonOfManyPhrase />
             </p>
             <p className="text-lg text-white/70"><br />Jesus Christ being the firstborn among many brethren. Through Him, we are united as</p>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"I am Robert — One \"Son\" of many...©"}
+              text={"Jesus Christ being the firstborn among many brethren.\n\n\"...that he might be the firstborn among many brethren.\" — Romans 8:29 (KJV)"}
+            />
           </div>
 
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SectionShare from './SectionShare';
 import { Brain, Trophy, Flame, Calendar, Star, ChevronRight, Zap, Target, Award, Swords, Users, Crown, Eye, Radio } from 'lucide-react';
 
 interface TriviaSectionProps {
@@ -80,6 +81,12 @@ const TriviaSection: React.FC<TriviaSectionProps> = ({
             Challenge yourself with questions from Scripture. From beginner to expert, 
             grow in your knowledge of God's Word while having fun!
           </p>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"Bible Trivia"}
+              text={"Challenge yourself with questions from Scripture. From beginner to expert, grow in your knowledge of God's Word while having fun — daily challenges, multiplayer battles and tournaments!"}
+            />
+          </div>
         </div>
 
         {/* Main Content Grid */}

@@ -1,4 +1,5 @@
 import React from 'react';
+import SectionShare from './SectionShare';
 import { Crown, Wind, Heart, Shield, Gift, BookOpen, Anchor, Scale, Sun, Music, Eye, Infinity, Check, Route, Droplet, Sunrise, RefreshCw } from 'lucide-react';
 import { topics } from '@/data/bibleData';
 
@@ -82,6 +83,12 @@ const TopicsSection: React.FC<TopicsSectionProps> = ({ onSelectTopic }) => {
           <p className="text-lg text-white/60 max-w-2xl mx-auto">
             Dive deep into God's Word through thematic studies. Each topic connects you to relevant passages throughout the Bible.
           </p>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"Explore Scripture by Topic"}
+              text={"Dive deep into God's Word through thematic studies. Each topic connects you to relevant passages throughout the Bible."}
+            />
+          </div>
         </div>
 
         {/* Topics Grid */}

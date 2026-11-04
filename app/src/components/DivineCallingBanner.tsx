@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SectionShare from './SectionShare';
 
 const DivineCallingBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -78,6 +79,12 @@ const DivineCallingBanner: React.FC = () => {
         <h2 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-[0.2em] uppercase mb-12 animate-pulse drop-shadow-lg" style={{ color: '#FFD700', textShadow: '0 0 20px rgba(255, 215, 0, 0.6), 0 0 40px rgba(255, 215, 0, 0.4)' }}>
           AUTHORITY  &   PURPOSE
         </h2>
+        <div className="-mt-6 mb-12 flex justify-center">
+          <SectionShare
+            title={"Authority & Purpose — Clarity of discipline"}
+            text={"\"The true strength of a man is forged thru bitterness, hurt, pain, struggle, loneliness and isolation...these produce mighty warriors in Christ!\" ©"}
+          />
+        </div>
 
 
 

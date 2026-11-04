@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SectionShare from './SectionShare';
 
 interface FaithAndWonderProps {
   onReadVerse: (reference: string) => void;
@@ -183,6 +184,12 @@ const FaithAndWonder: React.FC<FaithAndWonderProps> = ({ onReadVerse }) => {
 
               </p>
             </blockquote>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"Faith & Wonder"}
+              text={"\"Wonder is the ability to see beyond the limitations of sight.\" ©\n— Seeing Thru Spiritual Eyes"}
+            />
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SectionShare from './SectionShare';
 import { Heart, Droplets, BookOpen, ChevronRight, Sparkles, Church } from 'lucide-react';
 interface SalvationMessageProps {
   onReadVerse: (reference: string) => void;
@@ -55,6 +56,12 @@ const SalvationMessage: React.FC<SalvationMessageProps> = ({
           <p className="text-lg text-white/60 max-w-2xl mx-auto">
             Discover the path to eternal life through <span className="font-bold italic text-[#F59E0B]">Jesus Christ</span>, our Lord and Savior.
           </p>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"The Gospel Message — Do You Know Jesus?"}
+              text={"Discover the path to eternal life through Jesus Christ, our Lord and Savior.\n\n\"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.\" — John 3:16 (KJV)"}
+            />
+          </div>
         </div>
 
 

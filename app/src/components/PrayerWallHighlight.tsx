@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SectionShare from './SectionShare';
 import { Heart, Users, Sparkles, ArrowRight, HandHeart, Clock, Send } from 'lucide-react';
 
 interface PrayerRequest {
@@ -154,6 +155,12 @@ const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToP
             "Confess your faults one to another, and pray one for another, that ye may be healed."
           </p>
           <p className="text-amber-400 font-bold text-lg sm:text-xl">— James 5:16a (KJV 1611)</p>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"Community Prayer Wall — Lift Each Other Up in Prayer"}
+              text={"Share your prayer requests and pray for one another.\n\n\"Confess your faults one to another, and pray one for another, that ye may be healed.\" — James 5:16 (KJV)"}
+            />
+          </div>
 
         </div>
 

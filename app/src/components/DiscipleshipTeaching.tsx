@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SectionShare from './SectionShare';
 import { Crown, ChevronRight, ChevronDown, BookOpen, Heart, Users, Sparkles, Shield, Gift } from 'lucide-react';
 interface DiscipleshipTeachingProps {
   onReadVerse: (reference: string) => void;
@@ -274,6 +275,12 @@ const DiscipleshipTeaching: React.FC<DiscipleshipTeachingProps> = ({
             <span className="font-bold italic text-[#14B8A6]">discipleship</span> in Christ Jesus, 
             the firstborn among many brethren.
           </p>
+          <div className="mt-6 flex justify-center">
+            <SectionShare
+              title={"Understanding Our Identity as Sons of God"}
+              text={"Explore the profound biblical truth of our sonship and discipleship in Christ Jesus, the firstborn among many brethren.\n\n\"For as many as are led by the Spirit of God, they are the sons of God.\" — Romans 8:14 (KJV)"}
+            />
+          </div>
         </div>
 
         {/* Teaching Accordion */}
