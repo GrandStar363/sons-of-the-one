@@ -53,6 +53,9 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
   ];
 
   const REFERRALS_FOR_TRIAL = 3;
+  // The old "invite 3 friends, get a 3-day free trial" reward is off: there is
+  // no free trial any more (membership is $1 for the first 24 hours, then paid).
+  const REFERRAL_TRIAL_REWARD = false;
 
   useEffect(() => {
     if (user) {
@@ -265,7 +268,7 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       {/* Celebration Modal */}
-      {showCelebration && !stats?.referralTrialAwarded && (
+      {REFERRAL_TRIAL_REWARD && showCelebration && !stats?.referralTrialAwarded && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCelebration(false)} />
           <div className="relative bg-gradient-to-br from-[#0f2942] via-[#14B8A6]/20 to-[#F59E0B]/20 border-2 border-[#F59E0B]/50 rounded-3xl p-8 max-w-md w-full text-center animate-bounce-in">
@@ -360,8 +363,8 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
         </p>
       </div>
 
-      {/* Free Trial Progress Card */}
-      <div className="mb-8">
+      {/* Free Trial Progress Card (retired, see REFERRAL_TRIAL_REWARD) */}
+      {REFERRAL_TRIAL_REWARD && (<div className="mb-8">
         <div className={`bg-gradient-to-br ${stats?.referralTrialAwarded ? 'from-green-500/20 via-[#0f2942] to-[#14B8A6]/20 border-green-500/40' : 'from-[#F59E0B]/20 via-[#0f2942] to-[#14B8A6]/20 border-[#F59E0B]/40'} border-2 rounded-2xl p-6`}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-4">
@@ -461,7 +464,7 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
             </div>
           )}
         </div>
-      </div>
+      </div>)}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -640,7 +643,7 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
       </div>
 
       {/* Rewards Info */}
-      <div className="mt-8 grid sm:grid-cols-4 gap-4">
+      <div className={`mt-8 grid gap-4 ${REFERRAL_TRIAL_REWARD ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
         <div className="bg-gradient-to-br from-[#14B8A6]/10 to-[#0f2942] border border-[#14B8A6]/30 rounded-xl p-5">
           <div className="w-12 h-12 rounded-full bg-[#14B8A6]/20 flex items-center justify-center mb-3">
             <svg className="w-6 h-6 text-[#14B8A6]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -665,6 +668,7 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
           <div className="text-white/50 text-sm">You'll be notified!</div>
         </div>
 
+        {REFERRAL_TRIAL_REWARD && (
         <div className="bg-gradient-to-br from-[#EC4899]/10 to-[#0f2942] border border-[#EC4899]/30 rounded-xl p-5">
           <div className="w-12 h-12 rounded-full bg-[#EC4899]/20 flex items-center justify-center mb-3">
             <svg className="w-6 h-6 text-[#EC4899]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -676,6 +680,7 @@ const InviteFriends: React.FC<InviteFriendsProps> = ({ user, onOpenAuth }) => {
           <div className="text-[#EC4899] font-bold">3-Day Free Trial!</div>
           <div className="text-white/50 text-sm">Premium access unlocked</div>
         </div>
+        )}
 
         <div className="bg-gradient-to-br from-[#8B5CF6]/10 to-[#0f2942] border border-[#8B5CF6]/30 rounded-xl p-5">
           <div className="w-12 h-12 rounded-full bg-[#8B5CF6]/20 flex items-center justify-center mb-3">

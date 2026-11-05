@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
 import AuthPage from '@/components/AuthPage';
 import WelcomeClassroom from '@/components/WelcomeClassroom';
+import MembershipGate from '@/components/MembershipGate';
 import TermsOfService from '@/components/TermsOfService';
 import PrivacyPolicy from '@/components/PrivacyPolicy';
 import { AppProvider } from '@/contexts/AppContext';
@@ -22,9 +23,20 @@ function hasEnteredClassroom(): boolean {
   }
 }
 
+// Stripe sends the browser back to /?membership=return&redirect_status=… when a
+// card needs an extra check (3-D Secure) during the $1 payment.
+function readPaymentReturn(): 'succeeded' | 'failed' | null {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('membership') !== 'return') return null;
+  window.history.replaceState(null, '', window.location.pathname);
+  return params.get('redirect_status') === 'succeeded' ? 'succeeded' : 'failed';
+}
+
 const Index: React.FC = () => {
-  const [showWelcome, setShowWelcome] = useState(() => !hasEnteredClassroom());
+  const [paymentReturn] = useState(readPaymentReturn);
+  const [showWelcome, setShowWelcome] = useState(() => !paymentReturn && !hasEnteredClassroom());
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [account, setAccount] = useState<{ id: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
   // Track where the user came from for proper back navigation
@@ -36,6 +48,7 @@ const Index: React.FC = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         setIsAuthenticated(!!session);
+        setAccount(session ? { id: session.user.id, email: session.user.email ?? '' } : null);
         if (session) {
           setViewMode('app');
           setPreviousViewMode('app');
@@ -53,6 +66,12 @@ const Index: React.FC = () => {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
+      // Same object identity unless the account changes (token refreshes fire too).
+      setAccount((prev) => {
+        if (!session) return null;
+        if (prev?.id === session.user.id) return prev;
+        return { id: session.user.id, email: session.user.email ?? '' };
+      });
       if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false);
         setViewMode('auth');
@@ -151,18 +170,27 @@ const Index: React.FC = () => {
         onAuthSuccess={handleAuthSuccess}
         onNavigateToTerms={handleNavigateToTerms}
         onNavigateToPrivacy={handleNavigateToPrivacy}
+        notice={paymentReturn === 'succeeded'
+          ? 'Payment received. Confirm your email with the link we sent, then sign in to enter the Classroom.'
+          : undefined}
       />
     );
   }
 
-  // Show main app if authenticated
+  // Signed in: members (and admins) into the app, everyone else to billing.
   return (
-    <AppProvider>
-      <AppLayout 
-        onNavigateToTerms={handleNavigateToTerms}
-        onNavigateToPrivacy={handleNavigateToPrivacy}
-      />
-    </AppProvider>
+    <MembershipGate
+      userId={account?.id ?? ''}
+      email={account?.email ?? ''}
+      returningFromPayment={paymentReturn === 'succeeded'}
+    >
+      <AppProvider>
+        <AppLayout
+          onNavigateToTerms={handleNavigateToTerms}
+          onNavigateToPrivacy={handleNavigateToPrivacy}
+        />
+      </AppProvider>
+    </MembershipGate>
   );
 };
 

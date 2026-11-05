@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Book, Lock, Heart, Sparkles, BookOpen, Brain, Award, Mail, Eye, EyeOff, Loader2, AlertCircle, CheckCircle, User, UserPlus, Users, Shield, FileText, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { ENTRY_FEE, PLANS } from '@/lib/membership';
 
 interface AccessGateProps {
   onAuthSuccess: () => void;
@@ -123,8 +124,6 @@ const AccessGate: React.FC<AccessGateProps> = ({ onAuthSuccess, onNavigateToTerm
           data: {
             full_name: fullName.trim(),
             display_name: fullName.trim(),
-            trial_start: new Date().toISOString(),
-            trial_end: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             // Store terms acceptance for legal compliance
             terms_accepted: true,
             terms_accepted_at: termsAcceptedAt,
@@ -588,11 +587,14 @@ const AccessGate: React.FC<AccessGateProps> = ({ onAuthSuccess, onNavigateToTerm
                 </div>
               )}
 
-              {/* 3-Day Free Trial Badge (Sign Up only) */}
+              {/* Membership terms (Sign Up only) */}
               {mode === 'signup' && (
-                <div className="flex items-center justify-center space-x-2 p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl">
-                  <Sparkles className="w-5 h-5 text-[#F59E0B]" />
-                  <span className="text-[#F59E0B] font-medium">3-Day Free Trial Included!</span>
+                <div className="flex items-start justify-center space-x-2 p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl text-center">
+                  <Sparkles className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+                  <span className="text-[#F59E0B] text-sm font-medium">
+                    {ENTRY_FEE} for your first 24 hours, then {PLANS.monthly.price}/month
+                    (or {PLANS.annual.price}/year). Cancel anytime.
+                  </span>
                 </div>
               )}
 
@@ -643,7 +645,7 @@ const AccessGate: React.FC<AccessGateProps> = ({ onAuthSuccess, onNavigateToTerm
                       onClick={() => handleModeChange('signup')}
                       className="text-[#F59E0B] hover:text-[#FCD34D] hover:underline font-medium transition-colors"
                     >
-                      Sign up free
+                      Join now
                     </button>
                   </p>
                 )}

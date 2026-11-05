@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, Eye, EyeOff, Loader2, AlertCircle, CheckCircle, BookOpen, Heart, Users, Sparkles, Shield, FileText, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import MembershipCheckout from './MembershipCheckout';
+import { ENTRY_FEE, PLANS } from '@/lib/membership';
 
 interface AuthPageProps {
   onAuthSuccess: () => void;
   onNavigateToTerms?: () => void;
   onNavigateToPrivacy?: () => void;
+  /** Message to show on arrival, e.g. after returning from the payment page. */
+  notice?: string;
 }
 
 type AuthMode = 'signin' | 'signup' | 'reset';
 
-const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, onNavigateToPrivacy }) => {
+const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, onNavigateToPrivacy, notice }) => {
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,8 +23,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(notice ?? null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // Billing step right after sign-up (before the email is confirmed there's no session).
+  const [billing, setBilling] = useState<{ userId: string; email: string } | null>(null);
+  const [billingDone, setBillingDone] = useState(false);
 
   const resetForm = () => {
     setEmail('');
@@ -117,8 +124,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
         options: {
           data: {
             display_name: displayName.trim() || email.split('@')[0],
-            trial_start: new Date().toISOString(),
-            trial_end: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             // Store terms acceptance for legal compliance
             terms_accepted: true,
             terms_accepted_at: termsAcceptedAt,
@@ -141,13 +146,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
       }
 
       if (data.session) {
-        // Email confirmation is off: signed in immediately; the auth listener
-        // in Index moves them into the app.
+        // Email confirmation is off: signed in immediately. Index sees the new
+        // session and, as there's no membership yet, shows the billing step.
         await supabase.from('user_data').upsert({ user_id: data.session.user.id }, { onConflict: 'user_id' });
-        setSuccess('Account created! Signing you in…');
+        setSuccess('Account created! Continuing to billing…');
       } else if (data.user) {
-        // Email confirmation is on: no session until the link is clicked.
-        setSuccess(`Almost there! We've sent a confirmation link to ${email.trim()}. Click it to activate your account, then sign in.`);
+        // Email confirmation is on: no session until the link is clicked, so
+        // take billing now, tied to the new account.
+        setBilling({ userId: data.user.id, email: email.trim() });
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
@@ -403,6 +409,36 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
 
 
           <div className="bg-gradient-to-br from-[#0f2942]/80 to-[#0c1929]/80 backdrop-blur-xl border border-[#14B8A6]/30 rounded-2xl shadow-2xl overflow-hidden">
+            {billing ? (
+              <div className="p-8">
+                {billingDone ? (
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-[#14B8A6] to-[#0D9488] flex items-center justify-center">
+                      <CheckCircle className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-2xl font-serif font-bold text-white">Payment received — welcome!</h2>
+                    <p className="text-white/70">
+                      One last step: we've sent a confirmation link to{' '}
+                      <span className="text-white font-medium">{billing.email}</span>. Click it to activate your
+                      account, then sign in to enter the Classroom.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setBilling(null); setBillingDone(false); handleModeChange('signin'); }}
+                      className="w-full px-6 py-4 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white font-semibold rounded-xl"
+                    >
+                      Go to Sign In
+                    </button>
+                  </div>
+                ) : (
+                  <MembershipCheckout
+                    email={billing.email}
+                    signup={{ userId: billing.userId }}
+                    onComplete={() => setBillingDone(true)}
+                  />
+                )}
+              </div>
+            ) : (<>
             {/* Header */}
             <div className="p-8 pb-0">
               <div className="text-center mb-6">
@@ -592,11 +628,14 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
                 </div>
               )}
 
-              {/* 3-Day Free Trial Badge (Sign Up only) */}
+              {/* Membership terms (Sign Up only) */}
               {mode === 'signup' && (
-                <div className="flex items-center justify-center space-x-2 p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl">
-                  <Sparkles className="w-5 h-5 text-[#F59E0B]" />
-                  <span className="text-[#F59E0B] font-medium">3-Day Free Trial Included!</span>
+                <div className="flex items-start justify-center space-x-2 p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl text-center">
+                  <Sparkles className="w-5 h-5 text-[#F59E0B] flex-shrink-0 mt-0.5" />
+                  <span className="text-[#F59E0B] text-sm font-medium">
+                    {ENTRY_FEE} for your first 24 hours, then {PLANS.monthly.price}/month
+                    (or {PLANS.annual.price}/year). Cancel anytime.
+                  </span>
                 </div>
               )}
 
@@ -631,7 +670,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
                 ) : (
                   <span>
                     {mode === 'signin' && 'Sign In'}
-                    {mode === 'signup' && (agreedToTerms ? 'Create Account' : 'Accept Terms to Continue')}
+                    {mode === 'signup' && (agreedToTerms ? 'Continue to Billing' : 'Accept Terms to Continue')}
                     {mode === 'reset' && 'Send Reset Link'}
                   </span>
                 )}
@@ -647,7 +686,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
                       onClick={() => handleModeChange('signup')}
                       className="text-[#F59E0B] hover:text-[#FCD34D] hover:underline font-medium transition-colors"
                     >
-                      Sign up free
+                      Join now
                     </button>
                   </p>
                 )}
@@ -677,6 +716,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess, onNavigateToTerms, o
                 )}
               </div>
             </form>
+            </>)}
 
             {/* Footer */}
             <div className="px-8 pb-6">

@@ -34,7 +34,6 @@ import DailyBibleReadingPlan from './DailyBibleReadingPlan';
 import Footer from './Footer';
 import BibleVersionSelector from './BibleVersionSelector';
 import FaithAndWonder from './FaithAndWonder';
-import SubscriptionModal from './SubscriptionModal';
 import DonationModal from './DonationModal';
 import SubscriptionStatus from './SubscriptionStatus';
 import DonationHistory from './DonationHistory';
@@ -94,12 +93,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   
-  // Subscription and Donation modals
-  // Subscription and Donation modals
-  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  // Membership and Donation modals
   const [donationModalOpen, setDonationModalOpen] = useState(false);
   const [subscriptionStatusOpen, setSubscriptionStatusOpen] = useState(false);
   const [donationHistoryOpen, setDonationHistoryOpen] = useState(false);
+  const openMembership = () => (user ? setSubscriptionStatusOpen(true) : setAuthModalOpen(true));
   const [privateWorkspaceOpen, setPrivateWorkspaceOpen] = useState(false);
 
 
@@ -413,15 +411,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
         onOpenAuth={() => setAuthModalOpen(true)}
         onSignOut={handleSignOut}
         syncing={syncing}
-        onOpenSubscription={() => setSubscriptionModalOpen(true)}
+        onOpenSubscription={openMembership}
         onOpenDonation={() => setDonationModalOpen(true)}
-        onOpenSubscriptionStatus={() => {
-          if (user) {
-            setSubscriptionStatusOpen(true);
-          } else {
-            setAuthModalOpen(true);
-          }
-        }}
+        onOpenSubscriptionStatus={openMembership}
         onOpenDonationHistory={() => {
           setDonationHistoryOpen(true);
         }}
@@ -445,27 +437,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
         onAuthSuccess={handleAuthSuccess}
       />
 
-      {/* Subscription Modal */}
-      <SubscriptionModal
-        isOpen={subscriptionModalOpen}
-        onClose={() => setSubscriptionModalOpen(false)}
-      />
-
       {/* Donation Modal */}
       <DonationModal
         isOpen={donationModalOpen}
         onClose={() => setDonationModalOpen(false)}
       />
 
-      {/* Subscription Status Modal */}
+      {/* My Membership (plan, next charge, upgrade, cancel) */}
       <SubscriptionStatus
         isOpen={subscriptionStatusOpen}
         onClose={() => setSubscriptionStatusOpen(false)}
         email={user?.email || ''}
-        onSubscribe={() => {
-          setSubscriptionStatusOpen(false);
-          setSubscriptionModalOpen(true);
-        }}
       />
 
       {/* Donation History Modal */}
@@ -812,7 +794,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
             user={user}
             onOpenAuth={() => setAuthModalOpen(true)}
             onSignOut={handleSignOut}
-            onOpenSubscription={() => setSubscriptionModalOpen(true)}
+            onOpenSubscription={openMembership}
             onOpenNotifications={() => handleNavigate('notifications')}
           />
         )}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { formatDate as formatMembershipDate, getMembership, Membership, PLANS } from '@/lib/membership';
 import { toast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -52,12 +53,6 @@ interface ProfileData {
   createdAt: string;
 }
 
-interface SubscriptionInfo {
-  status: string;
-  trialDaysRemaining: number;
-  trialEnd: string | null;
-  planType: string;
-}
 
 
 const UserProfile: React.FC<UserProfileProps> = ({ 
@@ -76,7 +71,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
     bio: '',
     createdAt: ''
   });
-  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<Membership | null>(null);
   
   // Edit states
   const [isEditingName, setIsEditingName] = useState(false);
@@ -156,33 +151,10 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
   const loadSubscriptionInfo = async () => {
     if (!user) return;
-
-    
     try {
-      const metadata = user.user_metadata || {};
-      const trialEnd = metadata.trial_end ? new Date(metadata.trial_end) : null;
-      const now = new Date();
-      
-      let status = 'none';
-      let trialDaysRemaining = 0;
-      
-      if (trialEnd && trialEnd > now) {
-        status = 'trialing';
-        trialDaysRemaining = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      } else if (metadata.subscription_status === 'active') {
-        status = 'active';
-      } else if (trialEnd && trialEnd <= now) {
-        status = 'trial_expired';
-      }
-      
-      setSubscriptionInfo({
-        status,
-        trialDaysRemaining,
-        trialEnd: metadata.trial_end || null,
-        planType: metadata.subscription_plan || 'free'
-      });
+      setSubscriptionInfo(await getMembership());
     } catch (err) {
-      console.error('Error loading subscription:', err);
+      console.error('Error loading membership:', err);
     }
   };
 
@@ -408,36 +380,21 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
   const getSubscriptionBadge = () => {
     if (!subscriptionInfo) return null;
-    
-    switch (subscriptionInfo.status) {
-      case 'trialing':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm font-medium border border-blue-500/30">
-            <Sparkles className="w-4 h-4" />
-            Free Trial ({subscriptionInfo.trialDaysRemaining} days left)
-          </span>
-        );
-      case 'active':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#14B8A6]/20 text-[#5EEAD4] text-sm font-medium border border-[#14B8A6]/30">
-            <Crown className="w-4 h-4" />
-            Premium Active
-          </span>
-        );
-      case 'trial_expired':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium border border-amber-500/30">
-            <AlertTriangle className="w-4 h-4" />
-            Trial Expired
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-white/60 text-sm font-medium border border-white/20">
-            Free Plan
-          </span>
-        );
+    const m = subscriptionInfo;
+    const pill = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border';
+    if (m.status === 'trialing') {
+      return <span className={`${pill} bg-amber-500/20 text-amber-400 border-amber-500/30`}><Sparkles className="w-4 h-4" /> Member · first 24 hours</span>;
     }
+    if (m.status === 'active') {
+      return <span className={`${pill} bg-[#14B8A6]/20 text-[#5EEAD4] border-[#14B8A6]/30`}><Crown className="w-4 h-4" /> Member</span>;
+    }
+    if (m.status === 'past_due') {
+      return <span className={`${pill} bg-red-500/20 text-red-300 border-red-500/30`}><AlertTriangle className="w-4 h-4" /> Payment problem</span>;
+    }
+    if (m.isAdmin) {
+      return <span className={`${pill} bg-[#14B8A6]/20 text-[#5EEAD4] border-[#14B8A6]/30`}><Crown className="w-4 h-4" /> Administrator</span>;
+    }
+    return <span className={`${pill} bg-white/10 text-white/60 border-white/20`}>No membership</span>;
   };
 
   const totalStudyItems = bookmarks.length + highlights.length + Object.keys(notes).length;
@@ -873,37 +830,46 @@ const UserProfile: React.FC<UserProfileProps> = ({
           })()}
         </div>
 
-        {/* Subscription Section */}
+        {/* Membership Section */}
         <div className="p-6 border-b border-[#14B8A6]/20">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Crown className="w-5 h-5 text-[#F59E0B]" />
-            Subscription
+            Membership
           </h3>
-          
+
           <div className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white font-medium mb-1">
-                  {subscriptionInfo?.status === 'active' ? 'Premium Plan' : 
-                   subscriptionInfo?.status === 'trialing' ? 'Free Trial' : 
-                   subscriptionInfo?.status === 'trial_expired' ? 'Trial Expired' : 'Free Plan'}
-                </p>
-                {subscriptionInfo?.status === 'trialing' && subscriptionInfo.trialEnd && (
-                  <p className="text-white/60 text-sm">
-                    Trial ends {formatDate(subscriptionInfo.trialEnd)}
-                  </p>
-                )}
-                {subscriptionInfo?.status === 'trial_expired' && (
-                  <p className="text-amber-400 text-sm">
-                    Upgrade to continue enjoying premium features
-                  </p>
-                )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                {(() => {
+                  const m = subscriptionInfo;
+                  if (!m) return <p className="text-white/60">Loading…</p>;
+                  if (!m.hasSubscription) {
+                    return <p className="text-white font-medium">{m.isAdmin ? 'Administrator: full access' : 'No membership'}</p>;
+                  }
+                  const plan = PLANS[m.plan ?? 'monthly'];
+                  const entry = m.status === 'trialing';
+                  const next = entry ? m.trialEnd : m.currentPeriodEnd;
+                  return (
+                    <>
+                      <p className="text-white font-medium mb-1">{plan.label} membership · {plan.price}/{plan.per}</p>
+                      {m.status === 'canceled' ? (
+                        <p className="text-white/60 text-sm">Ended</p>
+                      ) : m.cancelAtPeriodEnd ? (
+                        <p className="text-amber-400 text-sm">Cancelled: access until {formatMembershipDate(next, entry)}</p>
+                      ) : next && (
+                        <p className="text-white/60 text-sm">
+                          {entry ? 'First charge' : 'Renews'} {formatMembershipDate(next, entry)}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <button
                 onClick={onOpenSubscription}
                 className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all flex items-center gap-2"
               >
-                {subscriptionInfo?.status === 'active' ? 'Manage' : 'Upgrade'}
+                Manage
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

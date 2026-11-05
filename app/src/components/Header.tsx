@@ -214,13 +214,13 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Premium Button - Desktop */}
+            {/* Membership Button - Desktop */}
             <button
               onClick={onOpenSubscription}
               className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg shadow-amber-500/25"
             >
               <Crown className="w-4 h-4" />
-              <span>Premium</span>
+              <span>Membership</span>
             </button>
 
             {/* Donate Button - Desktop */}
@@ -325,7 +325,7 @@ const Header: React.FC<HeaderProps> = ({
                         className="w-full flex items-center space-x-2 px-4 py-3 text-white/80 hover:bg-[#14B8A6]/10 hover:text-[#5EEAD4] transition-colors border-b border-[#14B8A6]/10"
                       >
                         <CreditCard className="w-4 h-4" />
-                        <span>My Subscription</span>
+                        <span>My Membership</span>
                       </button>
                       <button
                         onClick={() => {
@@ -411,7 +411,7 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Premium & Donate Buttons - Mobile */}
+            {/* Membership & Donate Buttons - Mobile */}
             <div className="flex gap-2 mb-4 pb-4 border-b border-white/10">
               <button
                 onClick={() => {
@@ -421,7 +421,7 @@ const Header: React.FC<HeaderProps> = ({
                 className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg"
               >
                 <Crown className="w-5 h-5" />
-                <span>Premium</span>
+                <span>Membership</span>
               </button>
               <button
                 onClick={() => {
