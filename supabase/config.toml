@@ -11,7 +11,8 @@ project_id = "gkjbrfwidybzptvgifxz"
 #   * the project uses the new sb_publishable_ key, which should not be relied
 #     on to satisfy gateway JWT verification.
 # FOLLOW-UP: per-function hardening for the ones that read by email/userId
-# (get-donation-history, get-subscription-status) — see db/README.md.
+# (get-donation-history) — see db/README.md. Subscriptions moved to `membership`,
+# which checks the caller's session itself.
 
 [functions.activity-tracker]
 verify_jwt = false
@@ -29,21 +30,15 @@ verify_jwt = false
 verify_jwt = false
 [functions.admin-users]
 verify_jwt = false
-[functions.cancel-subscription]
-verify_jwt = false
 [functions.church-finder]
 verify_jwt = false
 [functions.create-donation]
 verify_jwt = false
 [functions.create-recurring-donation]
 verify_jwt = false
-[functions.create-subscription]
-verify_jwt = false
 [functions.daily-trivia]
 verify_jwt = false
 [functions.get-donation-history]
-verify_jwt = false
-[functions.get-subscription-status]
 verify_jwt = false
 [functions.multiplayer-trivia]
 verify_jwt = false
@@ -59,3 +54,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.tournament-system]
 verify_jwt = false
+[functions.membership]
+verify_jwt = false   # authenticates the caller's session itself (and the sign-up window)

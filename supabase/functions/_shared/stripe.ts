@@ -80,6 +80,51 @@ function translateUrl(input: string, body: Record<string, unknown> | undefined):
   return { url: `${STRIPE_API}/${path}${u.search}` };
 }
 
+// ---------------------------------------------------------------------------
+// Direct Stripe API client for new code (membership).
+//
+// Pins the API version: Stripe's 2025 versions moved fields the membership
+// code relies on (subscription current_period_end, invoice payment_intent), and
+// an unpinned request gets whatever the account defaults to.
+// ---------------------------------------------------------------------------
+export const STRIPE_API_VERSION = '2024-06-20';
+
+export class StripeError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export async function stripeApi<T = any>(
+  method: 'GET' | 'POST' | 'DELETE',
+  path: string,
+  params: Record<string, unknown> = {},
+  idempotencyKey?: string,
+): Promise<T> {
+  const key = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!key) throw new StripeError('Payments are not configured (STRIPE_SECRET_KEY missing)', 503);
+
+  const form = toForm(params).toString();
+  const url = method === 'GET' && form ? `${STRIPE_API}${path}?${form}` : `${STRIPE_API}${path}`;
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${key}`,
+    'Stripe-Version': STRIPE_API_VERSION,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+
+  const res = await fetch(url, { method, headers, body: method === 'GET' ? undefined : form || undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new StripeError(data?.error?.message ?? `Stripe error ${res.status}`, res.status, data?.error?.code);
+  }
+  return data as T;
+}
+
 /**
  * Drop-in replacement for fetch() against the old Stripe proxy.
  * Returns a Response so existing `.ok` / `.json()` handling is unchanged.
@@ -98,7 +143,7 @@ export async function stripeFetch(input: string, init: RequestInit = {}): Promis
   if (init.body) {
     parsed = typeof init.body === 'string'
       ? JSON.parse(init.body)
-      : (init.body as Record<string, unknown>);
+      : (init.body as unknown as Record<string, unknown>);
   }
 
   const t = translateUrl(input, parsed);
