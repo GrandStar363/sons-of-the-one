@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useBackStep } from '@/lib/backNav';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -212,38 +213,136 @@ export function MultiplayerTrivia() {
     };
   }, [gameState, match?.current_question, answerSubmitted]);
 
-  // Poll for match state updates (backup for real-time)
+  // Live updates. Realtime isn't enabled for trivia_matches, so poll the
+  // server: while waiting for "I'm Ready" and during the game.
+  // Searching / match found / started / finished: bring that card into view,
+  // just under the header (the player may be scrolled down where they tapped
+  // "Find Opponent", and on a phone the page top would hide the buttons).
   useEffect(() => {
-    if (gameState !== 'playing' || !match?.id || !user) return;
+    if (gameState === 'menu') return;
+    requestAnimationFrame(() => {
+      document.querySelector('[data-battle-stage]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [gameState]);
+
+  const questionRef = useRef(-1);
+  const advanceForRef = useRef(-1);
+
+  const resetQuestion = (m: Match) => {
+    questionRef.current = m.current_question;
+    setSelectedAnswer(null);
+    setAnswerSubmitted(false);
+    setOpponentAnswered(false);
+    setShowCorrectAnswer(false);
+    setTimeLeft(m.time_per_question);
+  };
+
+  const enterPlaying = (m: Match) => {
+    setMatch(m);
+    resetQuestion(m);
+    setGameState('playing');
+  };
+
+  /** Both have answered: show the right answer for a moment, then move on (once per question). */
+  const revealThenAdvance = (m: Match) => {
+    setShowCorrectAnswer(true);
+    if (advanceForRef.current === m.current_question) return;
+    advanceForRef.current = m.current_question;
+    setTimeout(() => advanceToNextQuestion(m.current_question), 2500);
+  };
+
+  useEffect(() => {
+    if ((gameState !== 'ready' && gameState !== 'playing') || !match?.id || !user) return;
 
     const pollMatchState = async () => {
       try {
         const { data } = await supabase.functions.invoke('multiplayer-trivia', {
-          body: { action: 'get_match_state', matchId: match.id, userId: user.id }
+          body: { action: 'get_match_state', matchId: match.id }
         });
-        
-        if (data?.success) {
-          setOpponentAnswered(data.opponentAnswered);
-          
-          // If both answered, show results briefly then advance
-          if (data.bothAnswered && answerSubmitted && !showCorrectAnswer) {
-            setShowCorrectAnswer(true);
-            setTimeout(() => advanceToNextQuestion(), 2500);
+        if (!data?.success || !data.match) return;
+        const m: Match = data.match;
+
+        if (m.status === 'completed') {
+          if (gameState === 'playing' && m.current_question < m.total_questions - 1 && m.winner_id === user.id) {
+            toast({ title: 'Your opponent left the match', description: 'The win is yours!' });
           }
+          setMatch(m);
+          setGameState('results');
+          loadPlayerStats(user.id);
+          return;
         }
+        if (m.status === 'abandoned') {
+          toast({ title: 'Match cancelled', description: 'Your opponent left before the start. Find another opponent!' });
+          resetGame();
+          return;
+        }
+        if (gameState === 'ready') {
+          if (m.status === 'playing') enterPlaying(m);
+          else setMatch(m); // shows the opponent's "Ready" badge
+          return;
+        }
+        // playing
+        if (m.current_question !== questionRef.current) {
+          setMatch(m);
+          resetQuestion(m); // the other phone moved us on
+          return;
+        }
+        setMatch(m);
+        setOpponentAnswered(data.opponentAnswered);
+        if (data.bothAnswered) revealThenAdvance(m);
       } catch (error) {
         console.error('Error polling match state:', error);
       }
     };
 
     pollRef.current = setInterval(pollMatchState, 1500);
-
     return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-      }
+      if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [gameState, match?.id, user, answerSubmitted, showCorrectAnswer]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, match?.id, user]);
+
+  // While searching, ask again every couple of seconds: that both finds an
+  // opponent and tells the server we're still here (stale searchers are never
+  // matched). Give up after a minute.
+  useEffect(() => {
+    if (gameState !== 'queue' || !user) return;
+    const startedAt = Date.now();
+    let cancelled = false;
+    const id = setInterval(async () => {
+      if (cancelled) return;
+      if (Date.now() - startedAt > 60000) {
+        clearInterval(id);
+        leaveQueue();
+        toast({ title: 'No opponent found', description: 'Nobody else is searching right now. Please try again later.' });
+        return;
+      }
+      try {
+        const { data } = await supabase.functions.invoke('multiplayer-trivia', {
+          body: { action: 'join_queue', displayName, category: 'general', poll: true }
+        });
+        if (cancelled) return; // stopped searching while this was on its way
+        if (data?.success && !data.matched && data.queued === false) {
+          // Our place lapsed (e.g. the phone slept): take it again.
+          await supabase.functions.invoke('multiplayer-trivia', {
+            body: { action: 'join_queue', displayName, category: 'general' }
+          });
+          return;
+        }
+        if (data?.matched && data.match) {
+          clearInterval(id);
+          setMatch(data.match);
+          setGameState('ready');
+          const m = data.match as Match;
+          toast({ title: 'Match Found!', description: `Battle against ${m.player1_id === user.id ? m.player2_name : m.player1_name}`, duration: 2500 });
+        }
+      } catch (error) {
+        console.error('Error searching for a match:', error);
+      }
+    }, 2000);
+    return () => { cancelled = true; clearInterval(id); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, user]);
 
   // Join matchmaking queue
   const joinQueue = async () => {
@@ -274,6 +373,7 @@ export function MultiplayerTrivia() {
         setGameState('ready');
         toast({
           title: "Match Found!",
+          duration: 2500,
           description: `Real-time battle against ${data.match.player1_id === user.id ? data.match.player2_name : data.match.player1_name}`
         });
       } else {
@@ -282,7 +382,6 @@ export function MultiplayerTrivia() {
           title: "Searching for Opponent",
           description: "Waiting for another player to join..."
         });
-        pollForMatch();
       }
     } catch (error: any) {
       toast({
@@ -295,57 +394,15 @@ export function MultiplayerTrivia() {
     }
   };
 
-  // Poll for match when in queue
-  const pollForMatch = useCallback(async () => {
-    if (!user) return;
-
-    const checkForMatch = async () => {
-      const { data: matches } = await supabase
-        .from('trivia_matches')
-        .select('*')
-        .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
-        .eq('status', 'ready')
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (matches && matches.length > 0) {
-        setMatch(matches[0]);
-        setGameState('ready');
-        return true;
-      }
-      return false;
-    };
-
-    const interval = setInterval(async () => {
-      const found = await checkForMatch();
-      if (found) {
-        clearInterval(interval);
-      }
-    }, 2000);
-
-    // Stop polling after 60 seconds
-    setTimeout(() => {
-      clearInterval(interval);
-      if (gameState === 'queue') {
-        leaveQueue();
-        toast({
-          title: "No Match Found",
-          description: "No opponents available. Try again later.",
-          variant: "destructive"
-        });
-      }
-    }, 60000);
-  }, [user, gameState]);
-
   // Leave queue
   const leaveQueue = async () => {
     if (!user) return;
-    
+    setGameState('menu'); // stop searching on screen straight away
+
     try {
       await supabase.functions.invoke('multiplayer-trivia', {
         body: { action: 'leave_queue', userId: user.id }
       });
-      setGameState('menu');
     } catch (error) {
       console.error('Error leaving queue:', error);
     }
@@ -364,12 +421,9 @@ export function MultiplayerTrivia() {
         }
       });
 
-      if (data.bothReady) {
-        setGameState('playing');
-        setTimeLeft(match.time_per_question);
-        setAnswerSubmitted(false);
-        setOpponentAnswered(false);
-      }
+      if (!data?.success) throw new Error(data?.error || 'Could not get ready. Please try again.');
+      if (data.bothReady) enterPlaying(data.match);
+      else setMatch(data.match); // now shows "Ready"; the poll starts the game when the opponent is ready
     } catch (error: any) {
       toast({
         title: "Error",
@@ -394,18 +448,17 @@ export function MultiplayerTrivia() {
           matchId: match.id,
           questionIndex: match.current_question,
           answer: answerIndex,
-          timeRemaining: timeLeft
+          timeRemaining: Math.max(0, timeLeft)
         }
       });
 
       if (data?.success) {
         setLastPointsEarned(data.points || 0);
         
-        // If both players have answered, show results
-        if (data.bothAnswered) {
-          setShowCorrectAnswer(true);
-          setTimeout(() => advanceToNextQuestion(), 2500);
-        }
+        if (data.match) setMatch(data.match);
+        setOpponentAnswered(!!data.opponentAnswered);
+        // If both players have answered, show the right answer and move on
+        if (data.bothAnswered && data.match) revealThenAdvance(data.match);
       }
     } catch (error: any) {
       toast({
@@ -416,28 +469,22 @@ export function MultiplayerTrivia() {
     }
   };
 
-  // Advance to next question
-  const advanceToNextQuestion = async () => {
+  // Advance to next question (both phones call this; the server moves on once)
+  const advanceToNextQuestion = async (fromQuestion: number) => {
     if (!user || !match) return;
 
     try {
       const { data } = await supabase.functions.invoke('multiplayer-trivia', {
-        body: {
-          action: 'next_question',
-          userId: user.id,
-          matchId: match.id
-        }
+        body: { action: 'next_question', matchId: match.id, questionIndex: fromQuestion }
       });
-
-      if (data.gameOver) {
+      if (!data?.success || !data.match) return;
+      const m: Match = data.match;
+      setMatch(m);
+      if (data.gameOver || m.status === 'completed') {
         setGameState('results');
         loadPlayerStats(user.id);
-      } else {
-        setSelectedAnswer(null);
-        setAnswerSubmitted(false);
-        setOpponentAnswered(false);
-        setShowCorrectAnswer(false);
-        setTimeLeft(match.time_per_question);
+      } else if (m.current_question !== questionRef.current) {
+        resetQuestion(m);
       }
     } catch (error: any) {
       console.error('Error advancing question:', error);
@@ -446,6 +493,8 @@ export function MultiplayerTrivia() {
 
   // Reset game
   const resetGame = () => {
+    questionRef.current = -1;
+    advanceForRef.current = -1;
     setMatch(null);
     setSelectedAnswer(null);
     setAnswerSubmitted(false);
@@ -457,6 +506,34 @@ export function MultiplayerTrivia() {
     loadLeaderboard();
     loadMatchHistory();
   };
+
+  // Leave a match: before it starts it's cancelled for both; during the game
+  // it's a forfeit, so the opponent isn't left waiting.
+  const leaveMatch = () => {
+    if (match?.id) {
+      supabase.functions.invoke('multiplayer-trivia', { body: { action: 'leave_match', matchId: match.id } }).catch(() => {});
+    }
+    resetGame();
+  };
+
+  // Back (phone or the Back bar): out of the queue, out of a match, or from
+  // the results — each back to the Battle menu.
+  useBackStep(gameState === 'queue', () => { leaveQueue(); });
+  useBackStep(gameState === 'ready' || gameState === 'playing', () => leaveMatch());
+  useBackStep(gameState === 'results', () => resetGame());
+
+  // Leaving the page while searching or in a match: tell the server, so nobody
+  // is matched against (or kept waiting by) someone who has gone.
+  const leaveRef = useRef<{ state: string; matchId?: string }>({ state: 'menu' });
+  useEffect(() => { leaveRef.current = { state: gameState, matchId: match?.id }; }, [gameState, match?.id]);
+  useEffect(() => () => {
+    const { state, matchId } = leaveRef.current;
+    if (state === 'queue') {
+      supabase.functions.invoke('multiplayer-trivia', { body: { action: 'leave_queue' } }).catch(() => {});
+    } else if ((state === 'ready' || state === 'playing') && matchId) {
+      supabase.functions.invoke('multiplayer-trivia', { body: { action: 'leave_match', matchId } }).catch(() => {});
+    }
+  }, []);
 
   // Load data on tab change
   useEffect(() => {
@@ -692,7 +769,7 @@ export function MultiplayerTrivia() {
 
         {/* Queue State */}
         {gameState === 'queue' && (
-          <Card className="bg-white/10 border-white/20 text-white">
+          <Card data-battle-stage className="scroll-mt-32 bg-white/10 border-white/20 text-white">
             <CardContent className="p-8 text-center">
               <Loader2 className="w-16 h-16 mx-auto mb-4 text-purple-400 animate-spin" />
               <h2 className="text-2xl font-bold mb-2">Finding Opponent...</h2>
@@ -717,7 +794,7 @@ export function MultiplayerTrivia() {
 
         {/* Ready State */}
         {gameState === 'ready' && match && (
-          <Card className="bg-white/10 border-white/20 text-white">
+          <Card data-battle-stage className="scroll-mt-32 bg-white/10 border-white/20 text-white">
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <div className="flex items-center justify-center gap-2 mb-2">
@@ -784,7 +861,7 @@ export function MultiplayerTrivia() {
 
         {/* Playing State - Real-Time */}
         {gameState === 'playing' && match && (
-          <div className="space-y-4">
+          <div data-battle-stage className="scroll-mt-32 space-y-4">
             {/* Live indicator */}
             <div className="flex items-center justify-center gap-2">
               <Wifi className="w-4 h-4 text-green-400 animate-pulse" />
@@ -910,7 +987,7 @@ export function MultiplayerTrivia() {
 
         {/* Results State */}
         {gameState === 'results' && match && (
-          <Card className="bg-white/10 border-white/20 text-white overflow-hidden">
+          <Card data-battle-stage className="scroll-mt-32 bg-white/10 border-white/20 text-white overflow-hidden">
             <div className={`p-6 text-center ${
               iWon ? 'bg-gradient-to-r from-yellow-500/30 to-orange-500/30' :
               isDraw ? 'bg-gradient-to-r from-gray-500/30 to-gray-600/30' :
@@ -965,7 +1042,6 @@ export function MultiplayerTrivia() {
 
               {/* Share Results */}
               <div className="mb-6">
-                <h3 className="text-center text-sm text-purple-200 mb-3">Share your result</h3>
                 <SocialShareButtons
                   type="trivia_score"
                   title="Share your result"

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { functionErrorMessage } from '@/lib/utils';
+import { useBackStep } from '@/lib/backNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -127,10 +129,11 @@ export function TournamentOfDisciples() {
         body: { action: 'get_active_tournaments' }
       });
       
-      if (error) throw error;
-      if (data?.data) {
-        setTournaments(data.data);
-      }
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
+      // A list (current server) or { tournaments: [...] } (older one): never let
+      // a non-array reach .map/.filter, which blanks the whole page.
+      const list = Array.isArray(data?.data) ? data.data : data?.data?.tournaments;
+      setTournaments(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching tournaments:', error);
     }
@@ -142,13 +145,11 @@ export function TournamentOfDisciples() {
     
     try {
       const { data, error } = await supabase.functions.invoke('tournament-system', {
-        body: { action: 'get_user_tournaments', user_id: user.id }
+        body: { action: 'get_user_tournaments' }
       });
-      
-      if (error) throw error;
-      if (data?.data) {
-        setUserRegistrations(data.data);
-      }
+
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
+      setUserRegistrations(Array.isArray(data?.data) ? data.data : []);
     } catch (error) {
       console.error('Error fetching user registrations:', error);
     }
@@ -161,9 +162,15 @@ export function TournamentOfDisciples() {
         body: { action: 'get_bracket', tournament_id: tournamentId }
       });
       
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
       if (data?.data) {
-        setBracketData(data.data);
+        setBracketData({
+          tournament: data.data.tournament ?? null,
+          registrations: Array.isArray(data.data.registrations) ? data.data.registrations : [],
+          matches: Array.isArray(data.data.matches) ? data.data.matches : [],
+        });
+        // Keep the header (round x of y, status) current.
+        if (data.data.tournament) setSelectedTournament(data.data.tournament);
         
         // Find user's registration ID
         if (user) {
@@ -191,157 +198,125 @@ export function TournamentOfDisciples() {
     }
   }, [user, fetchUserRegistrations]);
 
-  // Set up real-time subscriptions
+  // Live updates. Realtime isn't enabled for the tournament tables, so poll:
+  // the open bracket every few seconds, and the match itself while playing.
   useEffect(() => {
-    // Subscribe to tournament updates
-    const tournamentChannel = supabase
-      .channel('tournaments-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournaments' },
-        (payload) => {
-          console.log('Tournament update:', payload);
-          fetchTournaments();
-          if (selectedTournament?.id) {
-            fetchBracket(selectedTournament.id);
-          }
-        }
-      )
-      .subscribe();
+    if (activeTab !== 'bracket' || !selectedTournament?.id || activeMatch) return;
+    const id = setInterval(() => fetchBracket(selectedTournament.id), 5000);
+    return () => clearInterval(id);
+  }, [activeTab, selectedTournament?.id, activeMatch, fetchBracket]);
 
-    // Subscribe to match updates for real-time gameplay
-    const matchChannel = supabase
-      .channel('matches-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournament_matches' },
-        (payload) => {
-          console.log('Match update:', payload);
-          if (selectedTournament?.id) {
-            fetchBracket(selectedTournament.id);
-          }
-          // Update active match if it's the one that changed
-          if (activeMatch && payload.new && (payload.new as any).id === activeMatch.id) {
-            const updatedMatch = payload.new as TournamentMatch;
-            setActiveMatch(updatedMatch);
-            
-            // Check if opponent answered
-            const isPlayer1 = updatedMatch.player1_id === userRegistrationId;
-            if (isPlayer1) {
-              setOpponentAnswered(updatedMatch.player2_current_answer !== null);
-            } else {
-              setOpponentAnswered(updatedMatch.player1_current_answer !== null);
-            }
-            
-            // Check if both ready and match started
-            if (updatedMatch.status === 'in_progress' && matchPhase === 'waiting') {
-              setMatchPhase('playing');
-              setCurrentQuestion(updatedMatch.current_question || 0);
-              if (updatedMatch.question_start_time) {
-                setQuestionStartTime(new Date(updatedMatch.question_start_time).getTime());
-              }
-            }
-            
-            // Check if question advanced
-            if (updatedMatch.current_question !== currentQuestion && updatedMatch.status === 'in_progress') {
-              setCurrentQuestion(updatedMatch.current_question);
-              setSelectedAnswer(null);
-              setAnswerSubmitted(false);
-              setOpponentAnswered(false);
-              if (updatedMatch.question_start_time) {
-                setQuestionStartTime(new Date(updatedMatch.question_start_time).getTime());
-              }
-            }
-            
-            // Check if match completed
-            if (updatedMatch.status === 'completed') {
-              setMatchPhase('results');
-            }
-          }
-        }
-      )
-      .subscribe();
+  // Server clock offset, so both players' timers agree.
+  const clockOffsetRef = useRef(0);
+  const noteServerTime = (iso?: string) => {
+    if (iso) clockOffsetRef.current = new Date(iso).getTime() - Date.now();
+  };
+  const serverNow = () => Date.now() + clockOffsetRef.current;
 
-    // Subscribe to registration updates
-    const regChannel = supabase
-      .channel('registrations-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tournament_registrations' },
-        (payload) => {
-          console.log('Registration update:', payload);
-          fetchTournaments();
-          fetchUserRegistrations();
-          if (selectedTournament?.id) {
-            fetchBracket(selectedTournament.id);
-          }
-        }
-      )
-      .subscribe();
+  const currentQuestionRef = useRef(0);
+  useEffect(() => { currentQuestionRef.current = currentQuestion; }, [currentQuestion]);
+  const regIdRef = useRef<string | null>(null);
+  useEffect(() => { regIdRef.current = userRegistrationId; }, [userRegistrationId]);
+  const switchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeMatchRef = useRef<TournamentMatch | null>(null);
+  useEffect(() => { activeMatchRef.current = activeMatch; }, [activeMatch]);
 
-    return () => {
-      supabase.removeChannel(tournamentChannel);
-      supabase.removeChannel(matchChannel);
-      supabase.removeChannel(regChannel);
+
+  /** Apply the latest match row from the server to the screen. */
+  const applyMatch = useCallback((m: TournamentMatch | null | undefined) => {
+    if (!m) return;
+    const meP1 = m.player1_id === regIdRef.current;
+    const mine = meP1 ? m.player1_current_answer : m.player2_current_answer;
+    const theirs = meP1 ? m.player2_current_answer : m.player1_current_answer;
+
+    if (m.status === 'completed') {
+      if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+      setActiveMatch(m);
+      setWaitingForOpponent(false);
+      setMatchPhase('results');
+      return;
+    }
+    if (m.status !== 'in_progress') {
+      setActiveMatch(m);
+      return;
+    }
+
+    setWaitingForOpponent(false);
+    const startAt = m.question_start_time ? new Date(m.question_start_time).getTime() : serverNow();
+    const showQuestion = () => {
+      setActiveMatch(m);
+      setMatchPhase('playing');
+      setCurrentQuestion(m.current_question || 0);
+      setQuestionStartTime(startAt);
+      setSelectedAnswer(null);
+      setAnswerSubmitted(mine !== null && mine !== undefined);
+      setMatchResult(null);
+      setOpponentAnswered(theirs !== null && theirs !== undefined);
     };
-  }, [selectedTournament, activeMatch, userRegistrationId, currentQuestion, matchPhase, fetchTournaments, fetchUserRegistrations, fetchBracket]);
 
-  // Countdown timer for questions
+    if ((m.current_question || 0) !== currentQuestionRef.current || !activeMatchRef.current) {
+      // New question: let the last answer's result show until the server's start time.
+      if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+      const wait = activeMatchRef.current ? Math.max(0, startAt - serverNow()) : 0;
+      currentQuestionRef.current = m.current_question || 0;
+      switchTimerRef.current = setTimeout(showQuestion, wait);
+    } else {
+      setActiveMatch(m);
+      setMatchPhase('playing');
+      setQuestionStartTime(startAt);
+      setOpponentAnswered(theirs !== null && theirs !== undefined);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Poll the match while waiting for the opponent or playing.
+  useEffect(() => {
+    if (!activeMatch?.id || matchPhase === 'results') return;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const { data } = await supabase.functions.invoke('tournament-system', {
+          body: { action: 'get_match_state', match_id: activeMatch.id }
+        });
+        if (stopped || !data?.success) return;
+        noteServerTime(data.server_now);
+        applyMatch(data.data?.match);
+      } catch (error) {
+        console.error('Error polling match state:', error);
+      }
+    };
+    const id = setInterval(poll, 1200);
+    return () => { stopped = true; clearInterval(id); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMatch?.id, matchPhase, applyMatch]);
+
+  useEffect(() => () => { if (switchTimerRef.current) clearTimeout(switchTimerRef.current); }, []);
+
+  // Countdown timer for questions (on the server's clock)
   useEffect(() => {
     if (activeMatch && matchPhase === 'playing' && questionStartTime > 0) {
       const updateTimer = () => {
-        const elapsed = Date.now() - questionStartTime;
+        const elapsed = Math.max(0, serverNow() - questionStartTime);
         const remaining = Math.max(0, (activeMatch.time_per_question || 15000) - elapsed);
         setTimeRemaining(remaining);
-        
+
         // Auto-submit if time runs out
         if (remaining <= 0 && !answerSubmitted) {
           handleTimeExpired();
         }
       };
-      
+
       updateTimer();
-      timerRef.current = setInterval(updateTimer, 100);
-      
+      timerRef.current = setInterval(updateTimer, 200);
+
       return () => {
         if (timerRef.current) {
           clearInterval(timerRef.current);
         }
       };
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMatch, matchPhase, questionStartTime, answerSubmitted]);
-
-  // Poll for match state when waiting for opponent
-  useEffect(() => {
-    if (activeMatch && waitingForOpponent && matchPhase === 'waiting') {
-      const pollMatchState = async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke('tournament-system', {
-            body: { action: 'get_match_state', match_id: activeMatch.id }
-          });
-          
-          if (data?.data?.match?.status === 'in_progress') {
-            setActiveMatch(data.data.match);
-            setMatchPhase('playing');
-            setWaitingForOpponent(false);
-            if (data.data.match.question_start_time) {
-              setQuestionStartTime(new Date(data.data.match.question_start_time).getTime());
-            }
-          }
-        } catch (error) {
-          console.error('Error polling match state:', error);
-        }
-      };
-      
-      pollRef.current = setInterval(pollMatchState, 2000);
-      
-      return () => {
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-        }
-      };
-    }
-  }, [activeMatch, waitingForOpponent, matchPhase]);
 
   // Handle time expired
   const handleTimeExpired = async () => {
@@ -354,7 +329,6 @@ export function TournamentOfDisciples() {
         body: {
           action: 'submit_answer',
           match_id: activeMatch.id,
-          player_registration_id: userRegistrationId,
           question_index: currentQuestion,
           answer: -1, // Invalid answer for timeout
           time_taken: activeMatch.time_per_question || 15000
@@ -389,7 +363,7 @@ export function TournamentOfDisciples() {
         }
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
       if (!data?.success) throw new Error(data?.error || 'Registration failed');
 
       toast({
@@ -410,46 +384,41 @@ export function TournamentOfDisciples() {
     }
   };
 
-  // Start a match (signal ready)
+  // Start a match (signal ready), or rejoin one in progress
   const handleStartMatch = async (match: TournamentMatch) => {
     setIsLoading(true);
-    
+
     try {
       const { data, error } = await supabase.functions.invoke('tournament-system', {
-        body: { 
-          action: 'start_match', 
-          match_id: match.id,
-          player_registration_id: userRegistrationId
-        }
+        body: { action: 'start_match', match_id: match.id }
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
       if (!data?.success) throw new Error(data?.error || 'Failed to start match');
+      noteServerTime(data.server_now);
+      const m: TournamentMatch = data.data.match;
 
-      setActiveMatch(data.data.match || data.data);
-      setCurrentQuestion(0);
+      setCurrentQuestion(-1);
+      currentQuestionRef.current = -1;
+      activeMatchRef.current = null;
       setSelectedAnswer(null);
       setAnswerSubmitted(false);
       setOpponentAnswered(false);
-      
-      // Check if waiting for opponent or match started
-      if (data.data.waiting_for_opponent) {
+      setMatchResult(null);
+
+      if (m.status === 'pending') {
+        setActiveMatch(m);
         setMatchPhase('waiting');
         setWaitingForOpponent(true);
         toast({
-          title: "Waiting for Opponent",
-          description: "Your opponent will join shortly. Get ready!",
+          title: "You're ready!",
+          description: "The match starts as soon as your opponent is ready too.",
         });
-      } else if (data.data.both_ready || data.data.match?.status === 'in_progress') {
-        setMatchPhase('playing');
-        setWaitingForOpponent(false);
-        if (data.data.match?.question_start_time) {
-          setQuestionStartTime(new Date(data.data.match.question_start_time).getTime());
+      } else {
+        applyMatch(m);
+        if (m.status === 'in_progress') {
+          toast({ title: "Match Started!", description: "Answer quickly - speed matters!" });
         }
-        toast({
-          title: "Match Started!",
-          description: "Answer quickly - speed matters!",
-        });
       }
     } catch (error: any) {
       toast({
@@ -467,37 +436,33 @@ export function TournamentOfDisciples() {
     if (!activeMatch || selectedAnswer === null || !userRegistrationId || answerSubmitted) return;
 
     setAnswerSubmitted(true);
-    const timeTaken = Date.now() - questionStartTime;
+    const timeTaken = Math.max(0, serverNow() - questionStartTime);
 
     try {
       const { data, error } = await supabase.functions.invoke('tournament-system', {
         body: {
           action: 'submit_answer',
           match_id: activeMatch.id,
-          player_registration_id: userRegistrationId,
           question_index: currentQuestion,
           answer: selectedAnswer,
           time_taken: timeTaken
         }
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
       if (!data?.success) throw new Error(data?.error || 'Failed to submit answer');
+      noteServerTime(data.server_now);
 
-      setMatchResult(data.data);
-
+      if (data.data.answer_result) setMatchResult(data.data);
       if (data.data.match_completed) {
-        setMatchPhase('results');
         toast({
           title: "Match Complete!",
-          description: data.data.match.winner_id === userRegistrationId 
-            ? "Congratulations! You won the match!" 
+          description: data.data.match?.winner_id === userRegistrationId
+            ? "Congratulations! You won the match!"
             : "Match ended. Better luck next time!",
         });
-      } else if (data.data.waiting_for_opponent) {
-        // Wait for opponent to answer
-        setOpponentAnswered(false);
       }
+      applyMatch(data.data.match);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -520,10 +485,22 @@ export function TournamentOfDisciples() {
     setMatchResult(null);
     if (timerRef.current) clearInterval(timerRef.current);
     if (pollRef.current) clearInterval(pollRef.current);
+    if (switchTimerRef.current) clearTimeout(switchTimerRef.current);
+    activeMatchRef.current = null;
     if (selectedTournament?.id) {
       fetchBracket(selectedTournament.id);
     }
   };
+  // Entering a match screen: show it from the top.
+  useEffect(() => {
+    if (activeMatch?.id) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeMatch?.id, matchPhase]);
+
+  // Back during a match (waiting, playing or results) returns to the bracket.
+  const exitRef = useRef(handleExitMatch);
+  exitRef.current = handleExitMatch;
+  useBackStep(!!activeMatch, () => exitRef.current());
+
 
   // Refresh data
   const handleRefresh = async () => {
@@ -547,7 +524,7 @@ export function TournamentOfDisciples() {
           name: 'Real-Time Disciples Duel',
           description: 'Live head-to-head battles! Answer questions in real-time against your opponent.',
           type: 'daily',
-          max_participants: 8,
+          max_participants: 4,
           entry_fee: 0,
           prize_pool: 100,
           start_time: new Date(Date.now() + 3600000).toISOString(),
@@ -556,7 +533,7 @@ export function TournamentOfDisciples() {
         }
       });
 
-      if (error) throw error;
+      if (error) throw new Error(await functionErrorMessage(error, "The tournament service is unavailable. Please try again."));
       if (!data?.success) throw new Error(data?.error || 'Failed to create tournament');
 
       toast({
@@ -724,7 +701,11 @@ export function TournamentOfDisciples() {
   // Render active match gameplay
   if (activeMatch && activeMatch.questions && activeMatch.questions.length > 0 && matchPhase === 'playing') {
     const question = activeMatch.questions[currentQuestion] as MatchQuestion;
-    const isCorrect = matchResult?.answer_result?.is_correct;
+    // Known straight away from the question; the server adds the points.
+    const isCorrect = matchResult?.answer_result
+      ? matchResult.answer_result.is_correct
+      : selectedAnswer !== null && selectedAnswer === question?.correct;
+    const pointsWon = matchResult?.answer_result?.points;
     const isPlayer1 = activeMatch.player1_id === userRegistrationId;
 
     return (
@@ -880,12 +861,12 @@ export function TournamentOfDisciples() {
               )}
 
               {/* Result Display */}
-              {answerSubmitted && matchResult?.answer_result && (
+              {answerSubmitted && (matchResult?.answer_result || selectedAnswer !== null) && (
                 <div className={`p-4 rounded-xl text-center ${
                   isCorrect ? 'bg-green-500/20 border border-green-500/30' : 'bg-red-500/20 border border-red-500/30'
                 }`}>
                   <p className={`font-bold ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
-                    {isCorrect ? `Correct! +${matchResult.answer_result.points} points` : 'Incorrect!'}
+                    {isCorrect ? `Correct!${pointsWon !== undefined ? ` +${pointsWon} points` : ''}` : 'Incorrect!'}
                   </p>
                   {!opponentAnswered && (
                     <p className="text-white/50 text-sm mt-2 flex items-center justify-center gap-2">
@@ -1368,7 +1349,7 @@ export function TournamentOfDisciples() {
                   {/* User's Next Match */}
                   {(() => {
                     const userMatch = findUserMatch();
-                    if (userMatch && userMatch.status === 'pending') {
+                    if (userMatch && (userMatch.status === 'pending' || userMatch.status === 'in_progress')) {
                       return (
                         <div className="mt-6 p-4 bg-[#14B8A6]/10 border border-[#14B8A6]/30 rounded-xl">
                           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1403,7 +1384,7 @@ export function TournamentOfDisciples() {
                               ) : (
                                 <Play className="w-4 h-4 mr-2" />
                               )}
-                              Start Real-Time Match
+                              {userMatch.status === 'in_progress' ? 'Rejoin Match' : 'Start Real-Time Match'}
                             </Button>
                           </div>
                         </div>

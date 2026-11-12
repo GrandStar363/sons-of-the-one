@@ -3,9 +3,11 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import SocialShareButtons from './SocialShareButtons';
 import { useSyncedState } from '@/hooks/useSyncedState';
+import { moreTriviaQuestions } from '@/data/triviaMore';
+import { useBackStep } from '@/lib/backNav';
 
 interface TriviaQuestion {
-
+  id: number;
   question: string;
   options: string[];
   correctAnswer: number;
@@ -21,8 +23,8 @@ interface BibleTriviaProps {
   onReadVerse: (reference: string) => void;
 }
 
-// Comprehensive trivia questions database
-const triviaQuestions: TriviaQuestion[] = [
+// Comprehensive trivia questions database (plus data/triviaMore.ts, merged below)
+const baseTriviaQuestions: TriviaQuestion[] = [
   // BEGINNER QUESTIONS
   {
     id: 1,
@@ -482,6 +484,10 @@ const triviaQuestions: TriviaQuestion[] = [
   }
 ];
 
+const triviaQuestions: TriviaQuestion[] = [...baseTriviaQuestions, ...moreTriviaQuestions];
+
+const QUESTIONS_PER_GAME = 10;
+
 const categories = ['All', 'Old Testament', 'New Testament', 'Characters', 'Prophecy', 'Miracles', 'General'];
 const difficulties: Array<'beginner' | 'intermediate' | 'advanced' | 'expert'> = ['beginner', 'intermediate', 'advanced', 'expert'];
 
@@ -494,6 +500,8 @@ const difficultyConfig = {
 
 const BibleTrivia: React.FC<BibleTriviaProps> = ({ user, onOpenAuth, onReadVerse }) => {
   const [gameState, setGameState] = useState<'setup' | 'playing' | 'result' | 'leaderboard'>('setup');
+  // Back from a game, its results or the leaderboard returns to the setup screen.
+  useBackStep(gameState !== 'setup', () => setGameState('setup'));
   const [selectedDifficulty, setSelectedDifficulty] = useState<'beginner' | 'intermediate' | 'advanced' | 'expert'>('beginner');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [timerEnabled, setTimerEnabled] = useState(true);
@@ -535,21 +543,28 @@ const BibleTrivia: React.FC<BibleTriviaProps> = ({ user, onOpenAuth, onReadVerse
     setAnswers(prev => [...prev, { correct: false, time: difficultyConfig[selectedDifficulty].time }]);
   };
 
+  /**
+   * Up to 10 questions for the chosen level and category. If that pair has
+   * fewer, top up from the same category at the nearest levels, then from the
+   * chosen level in other categories, so Start always begins a full game.
+   */
+  const buildGame = (difficulty: typeof selectedDifficulty, category: string) => {
+    const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
+    const inCategory = (q: TriviaQuestion) => category === 'All' || q.category === category;
+    const exact = shuffle(triviaQuestions.filter(q => q.difficulty === difficulty && inCategory(q)));
+    if (exact.length >= QUESTIONS_PER_GAME) return { questions: exact.slice(0, QUESTIONS_PER_GAME), mixed: false };
+
+    const level = difficulties.indexOf(difficulty);
+    const byNearestLevel = (a: TriviaQuestion, b: TriviaQuestion) =>
+      Math.abs(difficulties.indexOf(a.difficulty) - level) - Math.abs(difficulties.indexOf(b.difficulty) - level);
+    const sameCategory = shuffle(triviaQuestions.filter(q => inCategory(q) && q.difficulty !== difficulty)).sort(byNearestLevel);
+    const sameLevel = shuffle(triviaQuestions.filter(q => q.difficulty === difficulty && !inCategory(q)));
+    const picked = [...exact, ...sameCategory, ...sameLevel].slice(0, QUESTIONS_PER_GAME);
+    return { questions: picked, mixed: picked.length > exact.length };
+  };
+
   const startGame = () => {
-    // Filter questions by difficulty and category
-    let filteredQuestions = triviaQuestions.filter(q => q.difficulty === selectedDifficulty);
-    if (selectedCategory !== 'All') {
-      filteredQuestions = filteredQuestions.filter(q => q.category === selectedCategory);
-    }
-
-    // Shuffle and take 10 questions
-    const shuffled = [...filteredQuestions].sort(() => Math.random() - 0.5);
-    const gameQuestions = shuffled.slice(0, Math.min(10, shuffled.length));
-
-    if (gameQuestions.length < 5) {
-      alert('Not enough questions for this category and difficulty. Please select different options.');
-      return;
-    }
+    const { questions: gameQuestions } = buildGame(selectedDifficulty, selectedCategory);
 
     setQuestions(gameQuestions);
     setCurrentQuestionIndex(0);
@@ -562,7 +577,12 @@ const BibleTrivia: React.FC<BibleTriviaProps> = ({ user, onOpenAuth, onReadVerse
     setSelectedAnswer(null);
     setShowExplanation(false);
     setGameState('playing');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // How many questions exactly match the current choice (shown under Start).
+  const exactAvailable = triviaQuestions.filter(q =>
+    q.difficulty === selectedDifficulty && (selectedCategory === 'All' || q.category === selectedCategory)).length;
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (selectedAnswer !== null) return;
@@ -742,6 +762,10 @@ const BibleTrivia: React.FC<BibleTriviaProps> = ({ user, onOpenAuth, onReadVerse
               View Leaderboard
             </button>
           </div>
+          <p className="text-center text-white/50 text-sm -mt-4">
+            {QUESTIONS_PER_GAME} questions · {selectedCategory === 'All' ? 'All categories' : selectedCategory} · {difficultyConfig[selectedDifficulty].label}
+            {exactAvailable < QUESTIONS_PER_GAME && ' (with a few from nearby levels to make a full round)'}
+          </p>
         </div>
       )}
 

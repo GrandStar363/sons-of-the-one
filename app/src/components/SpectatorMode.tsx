@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useBackStep } from '@/lib/backNav';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,6 +62,8 @@ interface AnswerFeedItem {
 
 export function SpectatorMode() {
   const [view, setView] = useState<'list' | 'watching'>('list');
+  const leaveRef = useRef<() => void>(() => setView('list'));
+  useBackStep(view === 'watching', () => leaveRef.current());
   const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
   const [spectatingMatch, setSpectatingMatch] = useState<SpectatorMatch | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<CurrentQuestion | null>(null);
@@ -82,6 +85,9 @@ export function SpectatorMode() {
 
       if (error) throw error;
       setLiveMatches(data.matches || []);
+      if (showRefresh && !(data.matches || []).length) {
+        toast({ title: 'No live matches right now', description: 'Start one in Battle Mode, or check back in a little while.' });
+      }
     } catch (error: any) {
       console.error('Error loading live matches:', error);
     } finally {
@@ -231,6 +237,7 @@ export function SpectatorMode() {
     setView('list');
     loadLiveMatches();
   };
+  leaveRef.current = leaveSpectating;
 
   // Timer countdown effect
   useEffect(() => {

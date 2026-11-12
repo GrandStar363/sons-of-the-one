@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { toast } from '@/components/ui/use-toast';
 import { Calendar, Trophy, Flame, Star, Award, Clock, CheckCircle, XCircle, Loader2, Bell, BellOff, ChevronLeft, ChevronRight, Sparkles, Target, Zap, Crown, Medal, Gift } from 'lucide-react';
 
 interface DailyTriviaChallengeProps {
@@ -120,14 +121,32 @@ const DailyTriviaChallenge: React.FC<DailyTriviaChallengeProps> = ({ user, onOpe
     }
   };
 
+  // Always answer the tap: iPhones (unless the app is on the Home Screen) and
+  // in-app browsers have no notifications at all, and a blocked permission
+  // fails silently — the button used to look like it did nothing.
   const requestNotificationPermission = async () => {
-    if ('Notification' in window) {
-      const permission = await Notification.requestPermission();
-      setNotificationsEnabled(permission === 'granted');
-      if (permission === 'granted') {
-        // Schedule daily reminder
-        scheduleNotification();
-      }
+    if (!('Notification' in window)) {
+      toast({
+        title: 'Reminders aren\'t available in this browser',
+        description: 'On iPhone, add Sons of the One to your Home Screen (Share → Add to Home Screen) and open it from there. Or turn on email reminders under Daily Reminders in the menu.',
+      });
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      toast({
+        title: 'Notifications are blocked',
+        description: 'Allow notifications for this site in your browser settings, then tap Enable again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotificationsEnabled(permission === 'granted');
+    if (permission === 'granted') {
+      scheduleNotification();
+      toast({ title: 'Reminders on', description: "We'll remind you about each day's challenge." });
+    } else {
+      toast({ title: 'Reminders not turned on', description: 'You can enable them any time.' });
     }
   };
 
