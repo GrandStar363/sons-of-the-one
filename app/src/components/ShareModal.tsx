@@ -58,7 +58,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, content }) => 
   };
 
   const shareToFacebook = () => {
-    const url = `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(shareText)}`;
+    // Facebook only shares a link (it ignores pre-filled text); the page it
+    // links to carries the site's title and description.
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(appUrl)}`;
     window.open(url, '_blank', 'width=600,height=400');
   };
 
@@ -66,7 +68,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, content }) => 
     const tweetText = content.type === 'verse' 
       ? `"${content.text.slice(0, 200)}${content.text.length > 200 ? '...' : ''}" — ${content.reference}`
       : content.text.slice(0, 250);
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&hashtags=BibleVerse,Faith,SonsOfTheOne`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(appUrl)}&hashtags=BibleVerse,Faith,SonsOfTheOne`;
     window.open(url, '_blank', 'width=600,height=400');
   };
 
