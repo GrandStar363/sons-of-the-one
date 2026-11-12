@@ -1,82 +1,43 @@
 import React from 'react';
+import { ArrowLeft, Home } from 'lucide-react';
+
+// The Back bar under the header on every page except Home.
+//
+// It stays put while you scroll, and steps back exactly like the phone's own
+// Back: out of an open lesson/plan/game first, then to the previous page.
 
 interface BackButtonProps {
-  onClick: () => void;
-  show: boolean;
-  previousSection?: string;
+  onBack: () => void;
+  onHome: () => void;
+  title: string;
 }
 
-const BackButton: React.FC<BackButtonProps> = ({ onClick, show, previousSection }) => {
-  if (!show) return null;
-
-  // Format section name for display
-  const formatSectionName = (section: string) => {
-    const sectionNames: Record<string, string> = {
-      'home': 'Home',
-      'bible': 'Bible',
-      'plans': 'Reading Plans',
-      'bookmarks': 'Bookmarks',
-      'baptism': 'Baptism Journey',
-      'memory': 'Scripture Memory',
-      'journal': 'Journal',
-      'audio': 'Audio Bible',
-      'compare': 'Compare Versions',
-      'notifications': 'Notifications',
-      'churches': 'Church Finder',
-      'daily-reading': 'Daily Reading',
-      'faith-wonder': 'Faith & Wonder',
-      'trivia': 'Bible Trivia',
-      'daily-trivia': 'Daily Challenge',
-      'contact': 'Contact Us',
-      'profile': 'Profile',
-      'lessons': 'Lessons',
-      'certificates': 'Certificates',
-      'leaderboard': 'Leaderboard',
-      'daily-reminders': 'Reminders',
-      'multiplayer-trivia': 'Multiplayer',
-      'tournament': 'Tournament',
-      'spectator': 'Spectator Mode',
-      'terms-of-service': 'Terms',
-      'prayer-wall': 'Prayer Wall',
-      'devotional-emails': 'Devotional Emails',
-      'wwjd': 'WWJD',
-    };
-    return sectionNames[section] || section.charAt(0).toUpperCase() + section.slice(1).replace(/-/g, ' ');
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-6 left-6 z-50 group flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white font-semibold rounded-full shadow-lg shadow-teal-500/30 hover:shadow-teal-500/50 hover:from-[#0D9488] hover:to-[#0F766E] transition-all duration-300 transform hover:scale-105"
-      aria-label={`Go back to ${previousSection ? formatSectionName(previousSection) : 'previous page'}`}
-    >
-      {/* Back Arrow Icon */}
-      <svg 
-        className="w-5 h-5 transition-transform group-hover:-translate-x-1" 
-        fill="none" 
-        viewBox="0 0 24 24" 
-        stroke="currentColor"
+const BackButton: React.FC<BackButtonProps> = ({ onBack, onHome, title }) => (
+  <div className="sticky top-16 sm:top-20 z-40 border-b border-[#14B8A6]/25 bg-[#0c1929]/95 backdrop-blur-md">
+    <div className="max-w-7xl mx-auto flex h-12 items-center gap-3 px-4 sm:px-6 lg:px-8">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#14B8A6]/50 bg-[#14B8A6]/20 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#14B8A6]/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]/70"
+        aria-label="Go back"
       >
-        <path 
-          strokeLinecap="round" 
-          strokeLinejoin="round" 
-          strokeWidth={2} 
-          d="M10 19l-7-7m0 0l7-7m-7 7h18" 
-        />
-      </svg>
-      
-      {/* Text with previous section name */}
-      <span className="hidden sm:inline">
-        Back{previousSection && previousSection !== 'home' ? ` to ${formatSectionName(previousSection)}` : ''}
-      </span>
-      
-      {/* Mobile: Just show "Back" */}
-      <span className="sm:hidden">Back</span>
-      
-      {/* Pulse animation ring */}
-      <span className="absolute inset-0 rounded-full bg-[#14B8A6] animate-ping opacity-20" />
-    </button>
-  );
-};
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back
+      </button>
+      <h2 className="min-w-0 flex-1 truncate text-center font-serif text-base font-semibold text-white/90 sm:text-lg">
+        {title}
+      </h2>
+      <button
+        type="button"
+        onClick={onHome}
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]/70"
+        aria-label="Go to the home page"
+      >
+        <Home className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden sm:inline">Home</span>
+      </button>
+    </div>
+  </div>
+);
 
 export default BackButton;

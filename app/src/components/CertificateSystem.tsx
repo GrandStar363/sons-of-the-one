@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBackStep } from '@/lib/backNav';
 import { User } from '@supabase/supabase-js';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import {
@@ -449,6 +450,7 @@ const CertificateSystem: React.FC<CertificateSystemProps> = ({
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [viewingCertificate, setViewingCertificate] = useState<Certificate | null>(null);
+  useBackStep(!!viewingCertificate, () => setViewingCertificate(null));
 
   const userName = user?.user_metadata?.display_name || user?.email?.split('@')[0] || 'Faithful Student';
 

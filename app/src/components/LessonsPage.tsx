@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBackStep } from '@/lib/backNav';
 import { User } from '@supabase/supabase-js';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import { 
@@ -62,6 +63,8 @@ const LessonsPage: React.FC<LessonsPageProps> = ({ user, onOpenAuth, onReadVerse
 
   const [expandedTopic, setExpandedTopic] = useState<string | null>('sonship');
   const [selectedLesson, setSelectedLesson] = useState<{ topic: Topic; lesson: Lesson } | null>(null);
+  // Back (phone or the Back bar) returns from a lesson to the list.
+  useBackStep(!!selectedLesson, () => setSelectedLesson(null));
   const [lessonStep, setLessonStep] = useState(0);
 
   const topics: Topic[] = [
@@ -566,6 +569,7 @@ We grow faster and stronger when we're in accountable relationships. James instr
   const handleStartLesson = (topic: Topic, lesson: Lesson) => {
     setSelectedLesson({ topic, lesson });
     setLessonStep(0);
+    window.scrollTo({ top: 0 }); // start reading at the top of the lesson
   };
 
   const handleCompleteLesson = (lessonId: string) => {

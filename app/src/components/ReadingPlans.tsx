@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useBackStep } from '@/lib/backNav';
 import { Clock, BookOpen, ChevronRight, Check, Play, Crown, Scroll, Music, Wind, Star } from 'lucide-react';
 import { readingPlans } from '@/data/bibleData';
 
@@ -27,6 +28,7 @@ const ReadingPlans: React.FC<ReadingPlansProps> = ({
   onReadVerse,
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  useBackStep(!!selectedPlan, () => setSelectedPlan(null));
 
   const getProgress = (planId: string) => {
     const completed = planProgress[planId]?.length || 0;
@@ -202,7 +204,7 @@ const ReadingPlans: React.FC<ReadingPlansProps> = ({
 
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => setSelectedPlan(plan.id)}
+                    onClick={() => { setSelectedPlan(plan.id); window.scrollTo({ top: 0 }); }}
                     className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-white/5 text-[#f5f1e8] rounded-lg hover:bg-white/10 transition-colors"
                   >
                     <span>View Plan</span>

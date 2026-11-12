@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBackStep } from '@/lib/backNav';
 import { useSyncedState } from '@/hooks/useSyncedState';
 import { 
   Calendar, 
@@ -364,6 +365,9 @@ const DailyBibleReadingPlan: React.FC<DailyBibleReadingPlanProps> = ({
   });
 
   const [showScripture, setShowScripture] = useState<boolean>(false);
+  // Back closes the open reading first, then leaves the plan for the plan list.
+  useBackStep(showScripture, () => setShowScripture(false));
+  useBackStep(!!selectedPlanId, () => setSelectedPlanId(null));
   const [selectedReading, setSelectedReading] = useState<{ reference: string; title: string } | null>(null);
   const [scriptureContent, setScriptureContent] = useState<string>('');
   const [loadingScripture, setLoadingScripture] = useState<boolean>(false);
@@ -503,6 +507,7 @@ const DailyBibleReadingPlan: React.FC<DailyBibleReadingPlanProps> = ({
   // Start a plan
   const handleStartPlan = (planId: string) => {
     setSelectedPlanId(planId);
+    window.scrollTo({ top: 0 });
     const today = new Date().toISOString().split('T')[0];
     setPlanStartDate(today);
     setCompletedDays(prev => ({ ...prev, [planId]: [] }));

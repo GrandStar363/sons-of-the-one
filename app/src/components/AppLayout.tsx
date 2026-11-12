@@ -63,14 +63,23 @@ import BackButton from './BackButton';
 import OfflineIndicator from './OfflineIndicator';
 
 import { allBooks } from '@/data/bibleData';
+import {
+  currentDepth, currentEntry, initHistory, isSubOpen, NavEntry, pushEntry, replaceEntry,
+  SECTION_TITLES, sectionFromUrl, syncDepth, useBackStep,
+} from '@/lib/backNav';
 
-// Navigation history entry type
-
-interface NavigationHistoryEntry {
-  section: string;
-  scrollPosition: number;
-  timestamp: number;
-}
+// Where each home-page Topic opens in the Bible (it used to open an empty
+// "Select a Book" page).
+const TOPIC_CHAPTERS: Record<string, string> = {
+  'The Road to Salvation': 'Romans 10', 'Sons of God': 'Romans 8', 'Baptism': 'Romans 6',
+  'New Life': '2 Corinthians 5', 'The Spirit': 'Galatians 5', 'Faith': 'Hebrews 11',
+  'Love': '1 Corinthians 13', 'Salvation': 'Ephesians 2', 'Grace': 'Titus 2', 'Prayer': 'Matthew 6',
+  'Wisdom': 'Proverbs 3', 'Peace': 'Philippians 4', 'Hope': 'Romans 15', 'Righteousness': 'Romans 3',
+  'Redemption': 'Ephesians 1', 'Kingdom': 'Matthew 13', 'Eternal Life': 'John 3',
+  'Forgiveness': 'Matthew 18', 'Obedience': 'John 14', 'Worship': 'Psalm 95',
+  'Covenant': 'Jeremiah 31', 'Prophecy': 'Isaiah 53', 'Resurrection': '1 Corinthians 15',
+  'Transformation': 'Romans 12',
+};
 
 
 
@@ -104,14 +113,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
 
 
   // Navigation state
-  const [currentSection, setCurrentSection] = useState('home');
+  const [currentSection, setCurrentSection] = useState(() => sectionFromUrl() ?? 'home');
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
-  // Navigation history for back button functionality
-  const [navigationHistory, setNavigationHistory] = useState<NavigationHistoryEntry[]>([]);
-  const isNavigatingBack = useRef(false);
 
   // Bible reading state
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
@@ -198,50 +204,71 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
     // Data will be loaded via the auth state change listener
   };
 
-  // Navigation handlers with history tracking
+  // ---- Navigation ---------------------------------------------------------
+  // Each page change is a browser history entry (see lib/backNav.ts), so the
+  // phone's Back gesture, the browser's Back and the Back bar all work.
+  const scrollAfterRender = (y: number) => {
+    // Sections reload their content when you come back, which moves things for
+    // a moment; keep putting you back where you were until it settles — but
+    // stop as soon as you scroll yourself.
+    let userScrolled = false;
+    const stop = () => { userScrolled = true; };
+    const events = ['wheel', 'touchstart', 'keydown', 'pointerdown', 'mousedown'] as const;
+    events.forEach((ev) => window.addEventListener(ev, stop, { passive: true }));
+    [60, 300, 700, 1200, 1800].forEach((t) => setTimeout(() => {
+      if (!userScrolled && Math.abs(window.scrollY - y) > 30) window.scrollTo({ top: y });
+    }, t));
+    setTimeout(() => events.forEach((ev) => window.removeEventListener(ev, stop)), 2000);
+  };
+
+  useEffect(() => {
+    initHistory({ section: currentSection });
+    const onPop = (e: PopStateEvent) => {
+      const entry = (e.state && e.state.sog ? e.state : null) as NavEntry | null;
+      const before = syncDepth(entry);
+      // An inner view that is no longer open (its page was left): skip past it.
+      if (entry?.sub && !isSubOpen(entry.sub) && entry.depth < before) {
+        window.history.back();
+        return;
+      }
+      const section = entry?.section ?? 'home';
+      setCurrentSection(section);
+      if (section === 'bible' && entry?.book) {
+        setSelectedBook(entry.book);
+        setSelectedChapter(entry.chapter ?? 1);
+      }
+      setMenuOpen(false);
+      scrollAfterRender(entry?.scrollY ?? 0);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleNavigate = (section: string) => {
-    // Don't add to history if navigating back
-    if (!isNavigatingBack.current) {
-      // Save current scroll position and section to history
-      const currentScrollPosition = window.scrollY;
-      setNavigationHistory(prev => [
-        ...prev,
-        {
-          section: currentSection,
-          scrollPosition: currentScrollPosition,
-          timestamp: Date.now()
-        }
-      ]);
+    setMenuOpen(false);
+    if (section === currentSection && section !== 'bible') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
-    isNavigatingBack.current = false;
-    
+    pushEntry({ section });
     setCurrentSection(section);
-    setMenuOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0 });
   };
 
-  // Handle going back in navigation history
+  // Back bar: one step back, or Home if this is the first page of the visit.
   const handleGoBack = () => {
-    if (navigationHistory.length === 0) return;
-    
-    isNavigatingBack.current = true;
-    
-    // Get the last history entry
-    const lastEntry = navigationHistory[navigationHistory.length - 1];
-    
-    // Remove the last entry from history
-    setNavigationHistory(prev => prev.slice(0, -1));
-    
-    // Navigate to the previous section
-    setCurrentSection(lastEntry.section);
-    setMenuOpen(false);
-    
-    // Restore scroll position after a brief delay to allow content to render
-    setTimeout(() => {
-      window.scrollTo({ top: lastEntry.scrollPosition, behavior: 'smooth' });
-    }, 100);
+    if (currentDepth() > 0) window.history.back();
+    else handleNavigate('home');
   };
 
+  // Phone Back also closes these overlays.
+  useBackStep(showSearch, () => setShowSearch(false));
+  useBackStep(authModalOpen, () => setAuthModalOpen(false));
+  useBackStep(donationModalOpen, () => setDonationModalOpen(false));
+  useBackStep(subscriptionStatusOpen, () => setSubscriptionStatusOpen(false));
+  useBackStep(donationHistoryOpen, () => setDonationHistoryOpen(false));
+  useBackStep(privateWorkspaceOpen, () => setPrivateWorkspaceOpen(false));
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -249,20 +276,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
   };
 
   const handleSelectBook = (book: string, chapter: number = 1) => {
-    // Track navigation history when selecting a book
-    if (!isNavigatingBack.current) {
-      const currentScrollPosition = window.scrollY;
-      setNavigationHistory(prev => [
-        ...prev,
-        {
-          section: currentSection,
-          scrollPosition: currentScrollPosition,
-          timestamp: Date.now()
-        }
-      ]);
+    setMenuOpen(false);
+    const entry = currentEntry();
+    if (currentSection === 'bible' && entry?.section === 'bible' && !entry.sub) {
+      replaceEntry({ book, chapter }); // moving around inside the reader
+    } else {
+      pushEntry({ section: 'bible', book, chapter });
     }
-    isNavigatingBack.current = false;
-    
     setSelectedBook(book);
     setSelectedChapter(chapter);
     setCurrentSection('bible');
@@ -276,28 +296,27 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
     const book = allBooks.find(b => b.name === selectedBook);
     if (!book) return;
 
+    let nextBook = selectedBook;
+    let nextChapter = selectedChapter;
+    const currentIndex = allBooks.findIndex(b => b.name === selectedBook);
     if (direction === 'next') {
       if (selectedChapter < book.chapters) {
-        setSelectedChapter(selectedChapter + 1);
-      } else {
-        const currentIndex = allBooks.findIndex(b => b.name === selectedBook);
-        if (currentIndex < allBooks.length - 1) {
-          setSelectedBook(allBooks[currentIndex + 1].name);
-          setSelectedChapter(1);
-        }
+        nextChapter = selectedChapter + 1;
+      } else if (currentIndex < allBooks.length - 1) {
+        nextBook = allBooks[currentIndex + 1].name;
+        nextChapter = 1;
       }
     } else {
       if (selectedChapter > 1) {
-        setSelectedChapter(selectedChapter - 1);
-      } else {
-        const currentIndex = allBooks.findIndex(b => b.name === selectedBook);
-        if (currentIndex > 0) {
-          const prevBook = allBooks[currentIndex - 1];
-          setSelectedBook(prevBook.name);
-          setSelectedChapter(prevBook.chapters);
-        }
+        nextChapter = selectedChapter - 1;
+      } else if (currentIndex > 0) {
+        nextBook = allBooks[currentIndex - 1].name;
+        nextChapter = allBooks[currentIndex - 1].chapters;
       }
     }
+    setSelectedBook(nextBook);
+    setSelectedChapter(nextChapter);
+    replaceEntry({ book: nextBook, chapter: nextChapter });
   };
 
   // Bookmark handlers - now with date tracking
@@ -469,6 +488,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
 
       {/* Main Content */}
       <main className="pt-16 sm:pt-20">
+        {currentSection !== 'home' && (
+          <BackButton
+            onBack={handleGoBack}
+            onHome={() => handleNavigate('home')}
+            title={currentSection === 'bible' && selectedBook && selectedChapter
+              ? `${selectedBook} ${selectedChapter}`
+              : SECTION_TITLES[currentSection] ?? 'Sons of the One'}
+          />
+        )}
 
         {/* User Welcome Bar with Sign Out - Always visible when logged in */}
         {user && currentSection === 'home' && (
@@ -539,6 +567,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
             {/* Prayer Wall Highlight - Bright and noticeable section */}
             <PrayerWallHighlight
               onNavigateToPrayerWall={() => handleNavigate('prayer-wall')}
+              onReadVerse={handleReadVerse}
+              onOpenAuth={() => setAuthModalOpen(true)}
               user={user}
             />
 
@@ -589,7 +619,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
             />
             <div id="topics-section">
               <TopicsSection onSelectTopic={(topic) => {
-                handleNavigate('bible');
+                const reference = TOPIC_CHAPTERS[topic];
+                if (reference) handleReadVerse(reference);
+                else handleNavigate('bible');
               }} />
             </div>
             
@@ -851,6 +883,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
           <CommunityWall
             user={user}
             onOpenAuth={() => setAuthModalOpen(true)}
+            onReadVerse={handleReadVerse}
           />
         )}
 
@@ -878,13 +911,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
 
 
 
-
-      {/* Back Button - Floating navigation */}
-      <BackButton
-        onClick={handleGoBack}
-        show={navigationHistory.length > 0}
-        previousSection={navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1].section : undefined}
-      />
 
       {/* Offline Indicator - Shows connection status */}
       <OfflineIndicator />
