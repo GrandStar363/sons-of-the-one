@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import PrayerSpotlight from './PrayerSpotlight';
 import { User } from '@supabase/supabase-js';
 import { 
   Heart, MessageCircle, Send, Users, ChevronDown, ChevronUp, Sparkles, X, 
@@ -57,6 +58,7 @@ interface Encouragement {
 interface CommunityWallProps {
   user: User | null;
   onOpenAuth: () => void;
+  onReadVerse?: (reference: string) => void;
 }
 
 const PRAYER_CATEGORIES = [
@@ -69,9 +71,11 @@ const PRAYER_CATEGORIES = [
   { value: 'thanksgiving', label: 'Thanksgiving', icon: PartyPopper },
 ];
 
-const CommunityWall: React.FC<CommunityWallProps> = ({ user, onOpenAuth }) => {
+const CommunityWall: React.FC<CommunityWallProps> = ({ user, onOpenAuth, onReadVerse }) => {
   // Tab state
-  const [activeTab, setActiveTab] = useState<'declarations' | 'prayers'>('declarations');
+  // This is the Prayer Wall: open on the prayer requests.
+  const [activeTab, setActiveTab] = useState<'declarations' | 'prayers'>('prayers');
+  const [spotlightKey, setSpotlightKey] = useState(0);
   
   // Declarations state
   const [declarations, setDeclarations] = useState<Declaration[]>([]);
@@ -380,6 +384,7 @@ const CommunityWall: React.FC<CommunityWallProps> = ({ user, onOpenAuth }) => {
       setPrayerIsAnonymous(false);
       setShowPrayerForm(false);
       await loadPrayers();
+      setSpotlightKey((k) => k + 1);
     } catch (error) {
       console.error('Error submitting prayer:', error);
     } finally {
@@ -550,6 +555,20 @@ const CommunityWall: React.FC<CommunityWallProps> = ({ user, onOpenAuth }) => {
 
 
 
+        </div>
+
+        {/* Prayers rotating, one at a time */}
+        <div className="mb-10">
+          <h3 className="mb-4 text-center font-serif text-xl font-semibold text-[#d4af37]">
+            Praying for One Another
+          </h3>
+          <PrayerSpotlight
+            user={user}
+            refreshKey={spotlightKey}
+            onReadVerse={onReadVerse}
+            onOpenAuth={onOpenAuth}
+            tone="dark"
+          />
         </div>
 
         {/* Tab Navigation */}

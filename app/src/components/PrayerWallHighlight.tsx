@@ -1,113 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import SectionShare from './SectionShare';
-import { Heart, Users, Sparkles, ArrowRight, HandHeart, Clock, Send } from 'lucide-react';
-
-interface PrayerRequest {
-  id: string;
-  name: string;
-  isAnonymous: boolean;
-  category: string;
-  content: string;
-  prayerCount: number;
-  timestamp: Date;
-}
+import PrayerSpotlight, { PrayerStats } from './PrayerSpotlight';
+import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
+import { Heart, Users, Sparkles, ArrowRight, HandHeart, Send, Loader2 } from 'lucide-react';
 
 interface PrayerWallHighlightProps {
   onNavigateToPrayerWall: () => void;
-  user?: any;
+  onReadVerse?: (reference: string) => void;
+  onOpenAuth?: () => void;
+  user?: User | null;
 }
 
-const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToPrayerWall, user }) => {
-  const [prayedFor, setPrayedFor] = useState<Set<string>>(new Set());
-  const [animatingPrayer, setAnimatingPrayer] = useState<string | null>(null);
+// Home-page Prayer Wall: members' prayer requests rotating one after another
+// (with prayers from Scripture while there are only a few), real counts, and
+// a quick form that posts straight to the Prayer Wall.
+const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToPrayerWall, onReadVerse, onOpenAuth, user }) => {
   const [showQuickPrayer, setShowQuickPrayer] = useState(false);
   const [quickPrayerText, setQuickPrayerText] = useState('');
+  const [quickAnonymous, setQuickAnonymous] = useState(false);
   const [quickPrayerSubmitted, setQuickPrayerSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [stats, setStats] = useState<PrayerStats | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Sample recent prayers
-  const [recentPrayers, setRecentPrayers] = useState<PrayerRequest[]>([
-    {
-      id: '1',
-      name: 'Sarah M.',
-      isAnonymous: false,
-      category: 'Healing',
-      content: 'Please pray for my mother who is recovering from surgery. We trust in God\'s healing power.',
-      prayerCount: 47,
-      timestamp: new Date(Date.now() - 1000 * 60 * 15) // 15 mins ago
-    },
-    {
-      id: '2',
-      name: 'Anonymous',
-      isAnonymous: true,
-      category: 'Guidance',
-      content: 'Seeking God\'s direction for a major life decision. Please pray for clarity and peace.',
-      prayerCount: 32,
-      timestamp: new Date(Date.now() - 1000 * 60 * 45) // 45 mins ago
-    },
-    {
-      id: '3',
-      name: 'David K.',
-      isAnonymous: false,
-      category: 'Family',
-      content: 'Prayers for unity and restoration in my family. God is faithful!',
-      prayerCount: 28,
-      timestamp: new Date(Date.now() - 1000 * 60 * 90) // 90 mins ago
+  const handleQuickPrayerSubmit = async () => {
+    const request = quickPrayerText.trim();
+    if (!request) return;
+    if (!user) { onOpenAuth?.(); return; }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const name = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'A member';
+      const firstLine = request.split(/[.!?\n]/)[0].trim();
+      const { error } = await supabase.from('prayer_requests').insert({
+        user_id: user.id,
+        name: quickAnonymous ? 'Anonymous' : name,
+        title: (firstLine.length > 3 ? firstLine : 'Prayer request').slice(0, 70),
+        request,
+        category: 'general',
+        is_urgent: false,
+        is_anonymous: quickAnonymous,
+      });
+      if (error) throw error;
+      setQuickPrayerSubmitted(true);
+      setQuickPrayerText('');
+      setQuickAnonymous(false);
+      setRefreshKey((k) => k + 1); // show it in the rotation straight away
+      setTimeout(() => {
+        setQuickPrayerSubmitted(false);
+        setShowQuickPrayer(false);
+      }, 2500);
+    } catch (err) {
+      console.error('Could not share prayer request', err);
+      setSubmitError('Your prayer could not be shared just now. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-  ]);
-
-  const stats = {
-    totalPrayers: 1247,
-    prayersToday: 89,
-    prayerWarriors: 342
-  };
-
-  const handlePray = (prayerId: string) => {
-    if (prayedFor.has(prayerId)) return;
-    
-    setAnimatingPrayer(prayerId);
-    setPrayedFor(prev => new Set([...prev, prayerId]));
-    
-    setRecentPrayers(prev => prev.map(p => 
-      p.id === prayerId ? { ...p, prayerCount: p.prayerCount + 1 } : p
-    ));
-
-    setTimeout(() => setAnimatingPrayer(null), 1000);
-  };
-
-  const handleQuickPrayerSubmit = () => {
-    if (!quickPrayerText.trim()) return;
-    setQuickPrayerSubmitted(true);
-    setQuickPrayerText('');
-    setTimeout(() => {
-      setQuickPrayerSubmitted(false);
-      setShowQuickPrayer(false);
-    }, 2000);
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      'Healing': 'from-rose-500 to-pink-500',
-      'Guidance': 'from-blue-500 to-cyan-500',
-      'Family': 'from-amber-500 to-orange-500',
-      'Thanksgiving': 'from-emerald-500 to-teal-500',
-      'Protection': 'from-violet-500 to-purple-500',
-      'Financial': 'from-green-500 to-emerald-500',
-      'Spiritual Growth': 'from-indigo-500 to-blue-500',
-      'Relationships': 'from-pink-500 to-rose-500'
-    };
-    return colors[category] || 'from-gray-500 to-slate-500';
-  };
-
-  const getTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
   };
 
   return (
@@ -165,86 +115,37 @@ const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToP
         </div>
 
 
-        {/* Stats Bar */}
-
-        <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mb-8">
-          <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-            <Heart className="w-5 h-5 text-pink-300" />
-            <span className="text-white font-bold">{stats.totalPrayers.toLocaleString()}</span>
-            <span className="text-white/70 text-sm">prayers shared</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-            <Sparkles className="w-5 h-5 text-amber-300" />
-            <span className="text-white font-bold">{stats.prayersToday}</span>
-            <span className="text-white/70 text-sm">prayers today</span>
-          </div>
-          <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
-            <Users className="w-5 h-5 text-cyan-300" />
-            <span className="text-white font-bold">{stats.prayerWarriors}</span>
-            <span className="text-white/70 text-sm">prayer warriors</span>
-          </div>
-        </div>
-
-        {/* Prayer Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {recentPrayers.map((prayer) => (
-            <div
-              key={prayer.id}
-              className="group relative bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
-            >
-              {/* Category Badge */}
-              <div className={`inline-flex items-center px-3 py-1 rounded-full bg-gradient-to-r ${getCategoryColor(prayer.category)} text-white text-xs font-semibold mb-3`}>
-                {prayer.category}
-              </div>
-
-              {/* Prayer Content */}
-              <p className="text-white/90 text-sm leading-relaxed mb-4 line-clamp-3">
-                "{prayer.content}"
-              </p>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
-                    {prayer.isAnonymous ? '?' : prayer.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-white font-medium text-sm">
-                      {prayer.isAnonymous ? 'Anonymous' : prayer.name}
-                    </p>
-                    <p className="text-white/50 text-xs flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {getTimeAgo(prayer.timestamp)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Pray Button */}
-                <button
-                  onClick={() => handlePray(prayer.id)}
-                  disabled={prayedFor.has(prayer.id)}
-                  className={`flex items-center space-x-1.5 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-300 ${
-                    prayedFor.has(prayer.id)
-                      ? 'bg-emerald-500/30 text-emerald-300 cursor-default'
-                      : 'bg-white/20 text-white hover:bg-white hover:text-purple-600'
-                  } ${animatingPrayer === prayer.id ? 'animate-bounce' : ''}`}
-                >
-                  <HandHeart className={`w-4 h-4 ${prayedFor.has(prayer.id) ? 'text-emerald-300' : ''}`} />
-                  <span>{prayedFor.has(prayer.id) ? 'Prayed!' : 'Pray'}</span>
-                  <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                    {prayer.prayerCount}
-                  </span>
-                </button>
-              </div>
-
-              {/* Prayed Animation Overlay */}
-              {animatingPrayer === prayer.id && (
-                <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/20 rounded-2xl pointer-events-none">
-                  <div className="text-4xl animate-ping">🙏</div>
-                </div>
-              )}
+        {/* Stats (real counts, shown once members have shared requests) */}
+        {stats && stats.total > 0 && (
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 mb-8">
+            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+              <Heart className="w-5 h-5 text-pink-300" />
+              <span className="text-white font-bold">{stats.total.toLocaleString()}</span>
+              <span className="text-white/70 text-sm">prayer requests shared</span>
             </div>
-          ))}
+            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+              <Sparkles className="w-5 h-5 text-amber-300" />
+              <span className="text-white font-bold">{stats.today}</span>
+              <span className="text-white/70 text-sm">today</span>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+              <Users className="w-5 h-5 text-cyan-300" />
+              <span className="text-white font-bold">{stats.warriors}</span>
+              <span className="text-white/70 text-sm">prayer warriors</span>
+            </div>
+          </div>
+        )}
+
+        {/* Rotating prayers */}
+        <div className="mb-8">
+          <PrayerSpotlight
+            user={user ?? null}
+            refreshKey={refreshKey}
+            onReadVerse={onReadVerse}
+            onOpenAuth={onOpenAuth}
+            onStats={setStats}
+            tone="light"
+          />
         </div>
 
         {/* Quick Prayer Form */}
@@ -256,7 +157,7 @@ const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToP
                   <Sparkles className="w-8 h-8 text-emerald-300" />
                 </div>
                 <h3 className="text-white font-bold text-xl mb-2">Prayer Request Submitted!</h3>
-                <p className="text-white/70">Your prayer has been shared with the community.</p>
+                <p className="text-white/70">Your prayer is now on the Prayer Wall, where the family can pray with you.</p>
               </div>
             ) : (
               <>
@@ -268,9 +169,20 @@ const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToP
                   value={quickPrayerText}
                   onChange={(e) => setQuickPrayerText(e.target.value)}
                   placeholder="Share what's on your heart..."
+                  maxLength={1000}
                   className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-amber-400/50 resize-none"
                   rows={3}
                 />
+                <label className="mt-3 flex items-center gap-2 text-sm text-white/80">
+                  <input
+                    type="checkbox"
+                    checked={quickAnonymous}
+                    onChange={(e) => setQuickAnonymous(e.target.checked)}
+                    className="h-4 w-4 rounded accent-amber-400"
+                  />
+                  Share anonymously
+                </label>
+                {submitError && <p className="mt-3 text-sm text-red-200">{submitError}</p>}
                 <div className="flex justify-end mt-4 space-x-3">
                   <button
                     onClick={() => setShowQuickPrayer(false)}
@@ -280,9 +192,10 @@ const PrayerWallHighlight: React.FC<PrayerWallHighlightProps> = ({ onNavigateToP
                   </button>
                   <button
                     onClick={handleQuickPrayerSubmit}
-                    disabled={!quickPrayerText.trim()}
-                    className="px-6 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-semibold rounded-full hover:from-amber-500 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={!quickPrayerText.trim() || submitting}
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white font-semibold rounded-full hover:from-amber-500 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     Submit Prayer
                   </button>
                 </div>
