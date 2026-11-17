@@ -114,11 +114,14 @@ const OneSonOfMany: React.FC<OneSonOfManyProps> = ({
               <OneSonOfManyPhrase />
             </p>
             <p className="text-lg text-white/70"><br />Jesus Christ being the firstborn among many brethren. Through Him, we are united as</p>
+            <p className="mt-3 text-xl sm:text-2xl font-serif font-bold text-white">
+              The body of Christ ... <span className="whitespace-nowrap">Amen 🙏</span>
+            </p>
           </div>
           <div className="mt-6 flex justify-center">
             <SectionShare
               title={"I am Robert — One \"Son\" of many...©"}
-              text={"Jesus Christ being the firstborn among many brethren.\n\n\"...that he might be the firstborn among many brethren.\" — Romans 8:29 (KJV)"}
+              text={"Jesus Christ being the firstborn among many brethren. Through Him, we are united as\nThe body of Christ ... Amen 🙏\n\n\"...that he might be the firstborn among many brethren.\" — Romans 8:29 (KJV)"}
             />
           </div>
 
