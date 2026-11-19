@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { registerPendingSave } from '@/lib/pendingSaves';
 import { User } from '@supabase/supabase-js';
 
 /**
@@ -148,45 +149,63 @@ export function useJournalEntries(
   }, [user?.id]);
 
   // ---- Save -------------------------------------------------------------
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  const persist = useCallback(async () => {
+    const u = userRef.current;
+    if (!u || hydrating.current) return;
+    const current = latest.current.map((e) => ({ ...e, id: ensureUuid(e.id) }));
+    const currentIds = new Set(current.map((e) => e.id));
+
+    if (current.length > 0) {
+      const { error } = await supabase
+        .from('journal_entries')
+        .upsert(current.map((e) => toRow(e, u.id)));
+      if (error) {
+        console.warn('[useJournalEntries] save failed:', error.message);
+        return;
+      }
+    }
+
+    const removed = [...serverIds.current].filter((id) => !currentIds.has(id));
+    if (removed.length > 0) {
+      const { error } = await supabase
+        .from('journal_entries')
+        .delete()
+        .in('id', removed);
+      if (error) {
+        console.warn('[useJournalEntries] delete failed:', error.message);
+        return;
+      }
+    }
+
+    serverIds.current = currentIds;
+  }, []);
+
+  // Signing out sends a waiting save straight away instead of dropping it.
+  useEffect(() => registerPendingSave(async () => {
+    if (!timer.current) return;
+    clearTimeout(timer.current);
+    timer.current = null;
+    await persist();
+  }), [persist]);
+
   useEffect(() => {
     localStorage.setItem(CACHE_KEY, JSON.stringify(entries));
 
     if (!user || hydrating.current) return;
 
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      const current = latest.current.map((e) => ({ ...e, id: ensureUuid(e.id) }));
-      const currentIds = new Set(current.map((e) => e.id));
-
-      if (current.length > 0) {
-        const { error } = await supabase
-          .from('journal_entries')
-          .upsert(current.map((e) => toRow(e, user.id)));
-        if (error) {
-          console.warn('[useJournalEntries] save failed:', error.message);
-          return;
-        }
-      }
-
-      const removed = [...serverIds.current].filter((id) => !currentIds.has(id));
-      if (removed.length > 0) {
-        const { error } = await supabase
-          .from('journal_entries')
-          .delete()
-          .in('id', removed);
-        if (error) {
-          console.warn('[useJournalEntries] delete failed:', error.message);
-          return;
-        }
-      }
-
-      serverIds.current = currentIds;
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void persist();
     }, DEBOUNCE_MS);
 
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [entries, user?.id]);
+  }, [entries, user?.id, persist]);
 
   const update = useCallback(
     (updater: JournalEntry[] | ((p: JournalEntry[]) => JournalEntry[])) => {

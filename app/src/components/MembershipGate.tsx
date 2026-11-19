@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { signOut as signOutEverywhere } from '@/lib/session';
 import MembershipCheckout from './MembershipCheckout';
 import { getMembership, Membership, MEMBERSHIP_REQUIRED } from '@/lib/membership';
 
@@ -53,7 +53,7 @@ const MembershipGate: React.FC<MembershipGateProps> = ({ userId, email, returnin
 
   if (!MEMBERSHIP_REQUIRED || membership?.isMember) return <>{children}</>;
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = () => signOutEverywhere();
 
   if (checking) {
     return (

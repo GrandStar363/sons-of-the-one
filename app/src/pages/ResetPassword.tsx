@@ -207,11 +207,11 @@ const ResetPassword: React.FC = () => {
             </div>
             <h2 className="text-2xl font-serif font-bold text-white mb-3">Password Reset Successful!</h2>
             <p className="text-white/70 mb-6">
-              Your password has been successfully updated. You will be redirected to the login page shortly.
+              Your password has been successfully updated. Taking you back to the start, where you can sign in with your new password.
             </p>
             <div className="flex items-center justify-center space-x-2 text-[#14B8A6] mb-6">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Redirecting to login...</span>
+              <span className="text-sm">Returning to the start...</span>
             </div>
             <button
               onClick={handleBackToLogin}

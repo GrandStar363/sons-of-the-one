@@ -63,6 +63,7 @@ import BackButton from './BackButton';
 import OfflineIndicator from './OfflineIndicator';
 
 import { allBooks } from '@/data/bibleData';
+import { signOut } from '@/lib/session';
 import {
   currentDepth, currentEntry, initHistory, isSubOpen, NavEntry, pushEntry, replaceEntry,
   SECTION_TITLES, sectionFromUrl, syncDepth, useBackStep,
@@ -195,9 +196,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ onNavigateToTerms, onNavigateToPr
   }, [dataLoaded]);
 
   // Auth handlers
+  // Every Sign Out button (welcome bar, header menu, phone menu, My Profile):
+  // saves anything pending, signs out, and Index returns to the welcome page.
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
+    await signOut();
   };
 
   const handleAuthSuccess = () => {

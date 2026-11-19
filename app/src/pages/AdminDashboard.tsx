@@ -4,6 +4,7 @@ import {
   FileText, Mail, LogOut, Menu, X, Shield, ChevronRight, Inbox, Activity
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { forgetEnteredClassroom } from '@/lib/session';
 import AdminLogin from '@/components/admin/AdminLogin';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
 import AdminUsers from '@/components/admin/AdminUsers';
@@ -83,6 +84,9 @@ export default function AdminDashboard() {
     localStorage.removeItem('adminUser');
     setAdmin(null);
     setToken(null);
+    // Like every sign-out: back to the first page, "Enter The Classroom".
+    forgetEnteredClassroom();
+    window.location.assign('/');
   };
 
   if (loading) {

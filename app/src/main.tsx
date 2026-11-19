@@ -2,6 +2,10 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { installSignOutCleanup } from './lib/session'
+
+// Any sign-out clears personal data on this device and returns to the welcome page.
+installSignOutCleanup()
 
 // Register the service worker for offline functionality in PRODUCTION only.
 // In dev it caches the built bundle and serves stale JS, which masks .env and

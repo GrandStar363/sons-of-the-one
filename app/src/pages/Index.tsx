@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
 import AuthPage from '@/components/AuthPage';
 import WelcomeClassroom from '@/components/WelcomeClassroom';
@@ -7,20 +7,18 @@ import TermsOfService from '@/components/TermsOfService';
 import PrivacyPolicy from '@/components/PrivacyPolicy';
 import { AppProvider } from '@/contexts/AppContext';
 import { supabase } from '@/lib/supabase';
+import { claimDeviceFor, clearMemberDataOnDevice, hasEnteredClassroom, markEnteredClassroom } from '@/lib/session';
 import { Loader2 } from 'lucide-react';
 
 type ViewMode = 'auth' | 'terms' | 'privacy' | 'app';
 
 // The "One Classroom" welcome page opens each visit (once per browser tab
-// session), then "Enter The Classroom" goes on into the app or to sign-in.
-const ENTERED_KEY = 'sog-entered-classroom';
+// session) and after every sign-out; "Enter The Classroom" then goes on into
+// the app, or to sign-in. See lib/session.ts.
 
-function hasEnteredClassroom(): boolean {
-  try {
-    return sessionStorage.getItem(ENTERED_KEY) === '1';
-  } catch {
-    return false;
-  }
+/** Drop the page part of the address (#/lessons): the next person starts at Home. */
+function resetAddress() {
+  window.history.replaceState(null, '', window.location.pathname);
 }
 
 // Stripe sends the browser back to /?membership=return&redirect_status=… when a
@@ -41,12 +39,22 @@ const Index: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('auth');
   // Track where the user came from for proper back navigation
   const [previousViewMode, setPreviousViewMode] = useState<ViewMode>('auth');
+  // True while nobody is signed in, so a sign-in can be told apart from a
+  // session being restored on page load or a token refresh.
+  const signedOutRef = useRef(false);
 
   useEffect(() => {
     // Check initial auth state
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          claimDeviceFor(session.user.id);
+        } else {
+          // Nobody signed in: personal data left by an earlier session goes.
+          clearMemberDataOnDevice();
+          signedOutRef.current = true;
+        }
         setIsAuthenticated(!!session);
         setAccount(session ? { id: session.user.id, email: session.user.email ?? '' } : null);
         if (session) {
@@ -65,6 +73,14 @@ const Index: React.FC = () => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        // Before their pages load: cached data from another account is removed.
+        claimDeviceFor(session.user.id);
+        if (signedOutRef.current) {
+          signedOutRef.current = false;
+          resetAddress(); // a fresh sign-in starts at Home
+        }
+      }
       setIsAuthenticated(!!session);
       // Same object identity unless the account changes (token refreshes fire too).
       setAccount((prev) => {
@@ -73,9 +89,15 @@ const Index: React.FC = () => {
         return { id: session.user.id, email: session.user.email ?? '' };
       });
       if (event === 'SIGNED_OUT') {
+        // Back to the first page, "Enter The Classroom" (personal data on the
+        // device is cleared by lib/session.ts).
+        signedOutRef.current = true;
         setIsAuthenticated(false);
         setViewMode('auth');
         setPreviousViewMode('auth');
+        setShowWelcome(true);
+        resetAddress();
+        window.scrollTo({ top: 0 });
       } else if (session) {
         setViewMode('app');
         setPreviousViewMode('app');
@@ -115,11 +137,7 @@ const Index: React.FC = () => {
   }, [isAuthenticated]);
 
   const handleEnterClassroom = useCallback(() => {
-    try {
-      sessionStorage.setItem(ENTERED_KEY, '1');
-    } catch {
-      // Private browsing: they'll just see the welcome again next load.
-    }
+    markEnteredClassroom();
     setShowWelcome(false);
     window.scrollTo({ top: 0 });
   }, []);

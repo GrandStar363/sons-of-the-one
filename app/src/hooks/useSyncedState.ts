@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { registerPendingSave } from '@/lib/pendingSaves';
 
 /**
  * Drop-in replacement for the `useState` + `localStorage` pattern used across
@@ -151,22 +152,40 @@ export function useSyncedState<T>(
   }, [user?.id, column, cacheKey]);
 
   // ---- Save -------------------------------------------------------------
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  const persist = useCallback(async () => {
+    const u = userRef.current;
+    if (!u || hydrating.current) return;
+    const { error } = await supabase
+      .from('user_data')
+      .upsert(
+        { user_id: u.id, [column]: latest.current },
+        { onConflict: 'user_id' },
+      );
+    if (error) {
+      console.warn(`[useSyncedState] save failed for ${column}:`, error.message);
+    }
+  }, [column]);
+
+  // Signing out sends a waiting save straight away instead of dropping it.
+  useEffect(() => registerPendingSave(async () => {
+    if (!timer.current) return;
+    clearTimeout(timer.current);
+    timer.current = null;
+    await persist();
+  }), [persist]);
+
   useEffect(() => {
     writeCache(cacheKey, value);
 
     if (!user || hydrating.current) return;
 
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      const { error } = await supabase
-        .from('user_data')
-        .upsert(
-          { user_id: user.id, [column]: latest.current },
-          { onConflict: 'user_id' },
-        );
-      if (error) {
-        console.warn(`[useSyncedState] save failed for ${column}:`, error.message);
-      }
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      void persist();
     }, DEBOUNCE_MS);
 
     return () => {

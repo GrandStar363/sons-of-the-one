@@ -40,7 +40,7 @@ import ExportStudyNotes from './ExportStudyNotes';
 interface UserProfileProps {
   user: User | null;
   onOpenAuth: () => void;
-  onSignOut: () => void;
+  onSignOut: () => void | Promise<void>;
   onOpenSubscription: () => void;
   onOpenNotifications: () => void;
 }
@@ -353,14 +353,13 @@ const UserProfile: React.FC<UserProfileProps> = ({
     try {
       // Note: Full account deletion requires admin privileges
       // This will sign out the user and they can request deletion
-      await supabase.auth.signOut();
-      
       toast({
         title: "Account Deletion Requested",
         description: "Please contact support to complete account deletion.",
       });
-      
-      onSignOut();
+
+      // Signs out (saving anything pending) and returns to the welcome page.
+      await onSignOut();
     } catch (err: any) {
       toast({
         title: "Error",
