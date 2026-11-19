@@ -393,6 +393,9 @@ const UserProfile: React.FC<UserProfileProps> = ({
     if (m.isAdmin) {
       return <span className={`${pill} bg-[#14B8A6]/20 text-[#5EEAD4] border-[#14B8A6]/30`}><Crown className="w-4 h-4" /> Administrator</span>;
     }
+    if (m.isTester) {
+      return <span className={`${pill} bg-sky-500/20 text-sky-300 border-sky-500/30`}><Shield className="w-4 h-4" /> Test account</span>;
+    }
     return <span className={`${pill} bg-white/10 text-white/60 border-white/20`}>No membership</span>;
   };
 
@@ -843,7 +846,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
                   const m = subscriptionInfo;
                   if (!m) return <p className="text-white/60">Loading…</p>;
                   if (!m.hasSubscription) {
-                    return <p className="text-white font-medium">{m.isAdmin ? 'Administrator: full access' : 'No membership'}</p>;
+                    return <p className="text-white font-medium">{m.isAdmin ? 'Administrator: full access' : m.isTester ? 'Test account: full access, never billed' : 'No membership'}</p>;
                   }
                   const plan = PLANS[m.plan ?? 'monthly'];
                   const entry = m.status === 'trialing';

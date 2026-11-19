@@ -18,8 +18,10 @@ export const PLANS: Record<Plan, { label: string; price: string; per: string; no
 export interface Membership {
   isMember: boolean;
   isAdmin: boolean;
+  /** Test account (membership_testers): full access without billing. */
+  isTester?: boolean;
   hasSubscription: boolean;
-  status: string;            // Stripe status: trialing | active | past_due | canceled | incomplete | none
+  status: string;            // Stripe status: trialing | active | past_due | canceled | incomplete | none | test_account
   plan?: Plan;
   inEntryPeriod?: boolean;   // within the $1 first 24 hours
   trialEnd?: string | null;

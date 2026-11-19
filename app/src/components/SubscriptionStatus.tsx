@@ -143,6 +143,11 @@ export default function SubscriptionStatus({ isOpen, onClose, email }: Subscript
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Administrator account</h3>
                   <p className="text-gray-600">You have full access. Administrators don't need a membership.</p>
                 </>
+              ) : m.isTester ? (
+                <>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Test account</h3>
+                  <p className="text-gray-600">Full access for testing the app. This account is never billed.</p>
+                </>
               ) : (
                 <>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No membership yet</h3>

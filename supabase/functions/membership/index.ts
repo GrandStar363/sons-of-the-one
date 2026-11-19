@@ -81,6 +81,14 @@ async function isAdmin(email: string): Promise<boolean> {
   return !!data;
 }
 
+/** Test accounts (public.membership_testers): full member access, no billing. */
+async function isTester(email: string): Promise<boolean> {
+  const { data } = await admin().from('membership_testers').select('email').eq('email', email.toLowerCase()).maybeSingle();
+  return !!data;
+}
+
+interface Access { admin: boolean; tester: boolean }
+
 /** The member's row: by user id first, then by email (rows from older flows). */
 async function findRow(c: Caller) {
   const db = admin();
@@ -107,13 +115,20 @@ function planOf(sub: any): Plan {
   return price === PRICES.annual ? 'annual' : 'monthly';
 }
 
-function summarize(sub: any | null, adminUser = false) {
+function summarize(sub: any | null, who: Access = { admin: false, tester: false }) {
   if (!sub) {
-    return { isMember: adminUser, isAdmin: adminUser, hasSubscription: false, status: 'none' };
+    return {
+      isMember: who.admin || who.tester,
+      isAdmin: who.admin,
+      isTester: who.tester,
+      hasSubscription: false,
+      status: who.tester && !who.admin ? 'test_account' : 'none',
+    };
   }
   return {
-    isMember: adminUser || grantsAccess(sub),
-    isAdmin: adminUser,
+    isMember: who.admin || who.tester || grantsAccess(sub),
+    isAdmin: who.admin,
+    isTester: who.tester,
     hasSubscription: true,
     status: sub.status as string,
     plan: planOf(sub),
@@ -265,11 +280,12 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = String(body.action ?? 'status');
     const c = await resolveCaller(req, body, action);
-    const adminUser = await isAdmin(c.email);
+    const [adminUser, testerUser] = await Promise.all([isAdmin(c.email), isTester(c.email)]);
+    const who: Access = { admin: adminUser, tester: testerUser };
 
     if (action === 'status') {
       const { sub } = await currentSubscription(c);
-      const summary = summarize(sub, adminUser);
+      const summary = summarize(sub, who);
       if (!body.withHistory) return json(summary);
       const { data: history } = await admin().from('subscription_history')
         .select('id, event_type, plan_type, description, created_at')
@@ -281,7 +297,7 @@ Deno.serve(async (req) => {
       const plan = parsePlan(body.plan);
       const { sub: existing, customerId: knownCustomer } = await currentSubscription(c);
       if (existing && grantsAccess(existing)) {
-        return json({ alreadyMember: true, ...summarize(existing, adminUser) });
+        return json({ alreadyMember: true, ...summarize(existing, who) });
       }
 
       const customerId = await ensureCustomer(c, knownCustomer);
@@ -338,7 +354,7 @@ Deno.serve(async (req) => {
         await logEvent(c, rowId, sub, 'membership_started',
           `Paid $1.00 entry; ${planOf(sub)} billing starts ${day(sub.trial_end ?? sub.current_period_end)}`);
       }
-      return json({ paid, ...summarize(sub, adminUser) });
+      return json({ paid, ...summarize(sub, who) });
     }
 
     // Everything below manages an existing membership.
@@ -357,12 +373,12 @@ Deno.serve(async (req) => {
         cancel
           ? `Membership will end ${day(updated.status === 'trialing' ? updated.trial_end : updated.current_period_end)}; no further charges`
           : 'Cancellation withdrawn; membership continues');
-      return json(summarize(updated, adminUser));
+      return json(summarize(updated, who));
     }
 
     if (action === 'switch-plan') {
       const plan = parsePlan(body.plan);
-      if (planOf(sub) === plan) return json(summarize(sub, adminUser));
+      if (planOf(sub) === plan) return json(summarize(sub, who));
       const itemId = sub.items?.data?.[0]?.id;
       // During the first 24 hours nothing has been billed yet: just change what
       // gets billed when it ends. Afterwards, charge the prorated difference now.
@@ -376,7 +392,7 @@ Deno.serve(async (req) => {
       });
       const rowId = await saveRow(c, updated, updated.customer);
       await logEvent(c, rowId, updated, 'plan_changed', `Switched to the ${plan} plan`);
-      return json(summarize(updated, adminUser));
+      return json(summarize(updated, who));
     }
 
     throw new HttpError('Unknown action.', 400);
