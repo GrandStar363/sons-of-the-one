@@ -1,174 +1,143 @@
+// create-recurring-donation — monthly donations ($10 / $25 / $50 / $100).
+//
+//   create-setup-intent { email, name, amount }      -> { clientSecret, customerId, setupIntentId, priceId }
+//   activate-recurring  { customerId, amount, email, name } -> { subscriptionId, status, recurringDonationId }
+//   cancel              { subscriptionId }            -> { success }   (ends after the current month)
+//
+// Prices are found by lookup key (sog_donation_monthly_<cents>), so the same
+// code works in Stripe test and live mode without hard-coded price ids.
+// The card saved by the SetupIntent is made the subscription's payment
+// method; without that, the first monthly charge has no card to use.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-import { stripeFetch } from '../_shared/stripe.ts';
+import { stripeApi, StripeError } from '../_shared/stripe.ts';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-// Recurring donation price IDs
-const RECURRING_PRICES: Record<number, string> = {
-  1000: 'price_1UGLkaLfsMwtRrDI5KB5avv2',   // $10/month
-  2500: 'price_1UGLmiLfsMwtRrDIM37JQZ0Y',   // $25/month
-  5000: 'price_1UGLn5LfsMwtRrDI1MzrU3OX',   // $50/month
-  10000: 'price_1UGLnWLfsMwtRrDIvAFEIrqw'   // $100/month
-};
+const AMOUNTS = [1000, 2500, 5000, 10000]; // cents per month
+const lookupKey = (cents: number) => `sog_donation_monthly_${cents}`;
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+
+async function priceFor(cents: number): Promise<string> {
+  const found = await stripeApi('GET', '/prices', { lookup_keys: [lookupKey(cents)], active: true, limit: 1 });
+  const id = found.data?.[0]?.id;
+  if (!id) throw new Error('Monthly donations are not set up yet. Please try again later.');
+  return id;
+}
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-
-    const { email, name, amount, action, customerId: existingCustomerId } = await req.json();
+    // Read the body once (the cancel branch used to read it twice and always failed).
+    const { email, name, amount, action, customerId: existingCustomerId, subscriptionId } = await req.json();
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Cancel recurring donation
+    // ---- Cancel: no further charges after the current month ------------------
     if (action === 'cancel') {
-      const { subscriptionId } = await req.json();
-      if (!subscriptionId) throw new Error("Subscription ID is required");
-
-      const cancelResponse = await stripeFetch(`https://stripe.gateway.fastrouter.io/payments/subscriptions/${subscriptionId}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
-        body: JSON.stringify({ immediately: false })
-      });
-
-      const cancelData = await cancelResponse.json();
-      if (!cancelResponse.ok) throw new Error(cancelData.error || 'Failed to cancel recurring donation');
-
-      // Update database
-      await supabase
-        .from('recurring_donations')
-        .update({ 
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString()
-        })
+      if (!subscriptionId || !/^sub_[A-Za-z0-9]+$/.test(String(subscriptionId))) {
+        throw new Error('Subscription ID is required');
+      }
+      await stripeApi('POST', `/subscriptions/${subscriptionId}`, { cancel_at_period_end: true });
+      await supabase.from('recurring_donations')
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
         .eq('stripe_subscription_id', subscriptionId);
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      });
+      return json({ success: true });
     }
 
-    // Step 1: Create customer and SetupIntent
+    // ---- Step 1: customer + SetupIntent (saves the card) --------------------
     if (action === 'create-setup-intent' || !action) {
-      if (!email) throw new Error("Email is required");
-      if (!amount || !RECURRING_PRICES[amount]) {
-        throw new Error("Please select a valid recurring donation amount ($10, $25, $50, or $100/month)");
+      if (!email) throw new Error('Email is required');
+      if (!AMOUNTS.includes(Number(amount))) {
+        throw new Error('Please select a valid recurring donation amount ($10, $25, $50, or $100/month)');
       }
+      const priceId = await priceFor(Number(amount));
 
-      // Check if customer exists
-      const customersResponse = await stripeFetch(`https://stripe.gateway.fastrouter.io/payments/customers?email=${encodeURIComponent(email)}`, {
-        headers: { 'Content-Type': 'application/json'}
-      });
-      const customersData = await customersResponse.json();
-      
-      let customerId;
-      if (customersData.data?.length > 0) {
-        customerId = customersData.data[0].id;
-      } else {
-        // Create new customer
-        const createCustomerResponse = await stripeFetch('https://stripe.gateway.fastrouter.io/payments/customers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json'},
-          body: JSON.stringify({ 
-            email, 
-            name: name || email.split('@')[0],
-            metadata: { type: 'recurring_donor' }
-          })
+      const existing = await stripeApi('GET', '/customers', { email: String(email).toLowerCase(), limit: 1 });
+      let customerId: string = existing.data?.[0]?.id;
+      if (!customerId) {
+        const created = await stripeApi('POST', '/customers', {
+          email: String(email).toLowerCase(),
+          name: name || String(email).split('@')[0],
+          metadata: { type: 'recurring_donor', app: 'sons_of_the_one' },
         });
-        const newCustomer = await createCustomerResponse.json();
-        if (!createCustomerResponse.ok) throw new Error(newCustomer.error || 'Failed to create customer');
-        customerId = newCustomer.id;
+        customerId = created.id;
       }
 
-      // Create SetupIntent
-      const setupIntentResponse = await stripeFetch('https://stripe.gateway.fastrouter.io/payments/setup-intents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
-        body: JSON.stringify({ 
-          customer: customerId, 
-          metadata: { 
-            price_id: RECURRING_PRICES[amount],
-            amount: amount.toString(),
-            type: 'recurring_donation'
-          }
-        })
+      const setupIntent = await stripeApi('POST', '/setup_intents', {
+        customer: customerId,
+        usage: 'off_session',
+        automatic_payment_methods: { enabled: true },
+        metadata: { price_id: priceId, amount: String(amount), type: 'recurring_donation', app: 'sons_of_the_one' },
       });
-      const setupIntent = await setupIntentResponse.json();
-      if (!setupIntentResponse.ok) throw new Error(setupIntent.error || 'Failed to create setup intent');
 
-      return new Response(JSON.stringify({
-        clientSecret: setupIntent.clientSecret,
-        customerId,
-        setupIntentId: setupIntent.id,
-        priceId: RECURRING_PRICES[amount]
-      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return json({ clientSecret: setupIntent.client_secret, customerId, setupIntentId: setupIntent.id, priceId });
     }
 
-    // Step 2: Activate recurring donation subscription
+    // ---- Step 2: start the monthly donation with the saved card --------------
     if (action === 'activate-recurring') {
-      if (!existingCustomerId) throw new Error("Customer ID is required");
-      if (!amount || !RECURRING_PRICES[amount]) throw new Error("Invalid amount");
+      if (!existingCustomerId || !/^cus_[A-Za-z0-9]+$/.test(String(existingCustomerId))) {
+        throw new Error('Customer ID is required');
+      }
+      if (!AMOUNTS.includes(Number(amount))) throw new Error('Invalid amount');
+      const priceId = await priceFor(Number(amount));
 
-      const priceId = RECURRING_PRICES[amount];
+      // The card just saved by the SetupIntent.
+      const intents = await stripeApi('GET', '/setup_intents', { customer: existingCustomerId, limit: 5 });
+      const saved = (intents.data ?? []).find((si: any) => si.status === 'succeeded' && si.payment_method);
+      if (!saved) throw new Error('Your card was not saved. Please try again.');
+      const paymentMethod = typeof saved.payment_method === 'string' ? saved.payment_method : saved.payment_method.id;
 
-      const subscriptionResponse = await stripeFetch('https://stripe.gateway.fastrouter.io/payments/subscriptions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json'},
-        body: JSON.stringify({ 
-          customer: existingCustomerId, 
-          items: [{ price: priceId }],
-          metadata: { type: 'recurring_donation' }
-        })
+      await stripeApi('POST', `/customers/${existingCustomerId}`, {
+        invoice_settings: { default_payment_method: paymentMethod },
       });
-      const subscription = await subscriptionResponse.json();
-      if (!subscriptionResponse.ok) throw new Error(subscription.error || 'Failed to create recurring donation');
+      const subscription = await stripeApi('POST', '/subscriptions', {
+        customer: existingCustomerId,
+        items: [{ price: priceId }],
+        default_payment_method: paymentMethod,
+        // Charge the first month now; if the card declines, say so instead of
+        // recording a donation that never happened.
+        payment_behavior: 'error_if_incomplete',
+        metadata: { type: 'recurring_donation', app: 'sons_of_the_one' },
+        expand: ['latest_invoice'],
+      });
 
-      // Calculate next billing date
-      const nextBillingDate = new Date();
-      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-
-      // Save to database
       const { data: recurringDonation, error: dbError } = await supabase
         .from('recurring_donations')
         .insert({
           email,
           name: name || 'Monthly Supporter',
-          amount,
+          amount: Number(amount),
           currency: 'usd',
           stripe_subscription_id: subscription.id,
           stripe_customer_id: existingCustomerId,
           stripe_price_id: priceId,
-          status: 'active',
-          next_billing_date: nextBillingDate.toISOString()
+          status: subscription.status === 'active' ? 'active' : subscription.status,
+          next_billing_date: subscription.current_period_end
+            ? new Date(subscription.current_period_end * 1000).toISOString()
+            : null,
         })
         .select()
         .single();
+      if (dbError) console.error('Error saving recurring donation:', dbError);
 
-      if (dbError) {
-        console.error('Error saving recurring donation:', dbError);
-      }
-
-      return new Response(JSON.stringify({
-        subscriptionId: subscription.id,
-        status: subscription.status,
-        recurringDonationId: recurringDonation?.id
-      }), { headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+      return json({ subscriptionId: subscription.id, status: subscription.status, recurringDonationId: recurringDonation?.id });
     }
 
-    throw new Error("Invalid action");
+    throw new Error('Invalid action');
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
+    const message = error instanceof StripeError && error.status === 402
+      ? error.message // card declined etc.: the donor's to fix
+      : (error as Error).message;
+    console.error('[create-recurring-donation]', message);
+    return json({ error: message }, error instanceof StripeError && error.status === 402 ? 402 : 500);
   }
 });

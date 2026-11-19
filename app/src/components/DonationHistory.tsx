@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { supabase } from '@/lib/supabase';
+import { functionErrorMessage } from '@/lib/utils';
 import { stripePromise, stripeEnabled } from '@/lib/stripe';
 import { 
   X, Heart, Gift, Calendar, DollarSign, Users, Globe, BookOpen, 
@@ -87,7 +88,7 @@ function RecurringPaymentForm({ onSuccess, onCancel, customerId, amount, email, 
         });
 
         if (subError || data?.error) {
-          setError(data?.error || subError?.message || 'Failed to activate recurring donation');
+          setError(data?.error || await functionErrorMessage(subError, 'Failed to activate recurring donation'));
           setLoading(false);
           return;
         }
@@ -256,8 +257,8 @@ export default function DonationHistory({ isOpen, onClose, userEmail }: Donation
           action: 'create-setup-intent' 
         }
       });
-      if (fnError || data?.error) throw new Error(data?.error || fnError?.message);
-      
+      if (fnError || data?.error) throw new Error(data?.error || await functionErrorMessage(fnError, 'Could not start the monthly donation'));
+
       setClientSecret(data.clientSecret);
       setCustomerId(data.customerId);
       setRecurringStep('payment');
@@ -280,7 +281,7 @@ export default function DonationHistory({ isOpen, onClose, userEmail }: Donation
       const { data, error } = await supabase.functions.invoke('create-recurring-donation', {
         body: { action: 'cancel', subscriptionId }
       });
-      if (error || data?.error) throw new Error(data?.error || error?.message);
+      if (error || data?.error) throw new Error(data?.error || await functionErrorMessage(error, 'Could not cancel the monthly donation'));
       loadData();
     } catch (err: any) {
       setError(err.message);

@@ -161,6 +161,8 @@ export async function stripeFetch(input: string, init: RequestInit = {}): Promis
     headers: {
       'Authorization': `Bearer ${key}`,
       'Content-Type': 'application/x-www-form-urlencoded',
+      // Same pinned version as stripeApi, so live mode behaves like test did.
+      'Stripe-Version': STRIPE_API_VERSION,
     },
     body,
   });

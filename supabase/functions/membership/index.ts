@@ -162,10 +162,15 @@ async function logEvent(c: Caller, rowId: string | undefined, sub: any, event: s
   });
 }
 
+/** A Stripe object that doesn't exist in this mode (e.g. a test-mode id after going live). */
+const isMissing = (e: unknown) =>
+  e instanceof StripeError && (e.status === 404 || e.code === 'resource_missing');
+
 /** Load the member's current Stripe subscription (live) and keep the row in sync. */
 async function currentSubscription(c: Caller): Promise<{ sub: any | null; customerId: string | null }> {
   const row = await findRow(c);
   let customerId: string | null = row?.stripe_customer_id ?? null;
+  let stale = false;
 
   if (row?.stripe_subscription_id) {
     try {
@@ -177,23 +182,47 @@ async function currentSubscription(c: Caller): Promise<{ sub: any | null; custom
         return { sub, customerId };
       }
     } catch (e) {
-      if (!(e instanceof StripeError && e.status === 404)) throw e;
+      if (!isMissing(e)) throw e;
+      stale = true; // recorded in the other Stripe mode (test before going live)
+    }
+  }
+
+  let subs: any[] = [];
+  if (customerId) {
+    try {
+      const list = await stripeApi('GET', '/subscriptions', {
+        customer: customerId, status: 'all', limit: 10, expand: ['data.latest_invoice'],
+      });
+      subs = list.data ?? [];
+    } catch (e) {
+      if (!isMissing(e)) throw e;
+      customerId = null; // customer from the other mode: look up by email instead
+      stale = true;
     }
   }
 
   if (!customerId) {
     const found = await stripeApi('GET', '/customers', { email: c.email, limit: 1 });
     customerId = found.data?.[0]?.id ?? null;
+    if (customerId) {
+      const list = await stripeApi('GET', '/subscriptions', {
+        customer: customerId, status: 'all', limit: 10, expand: ['data.latest_invoice'],
+      });
+      subs = list.data ?? [];
+    }
   }
-  if (!customerId) return { sub: null, customerId: null };
 
   // Fall back to the customer's subscriptions: prefer a live one, else the latest.
-  const list = await stripeApi('GET', '/subscriptions', {
-    customer: customerId, status: 'all', limit: 10, expand: ['data.latest_invoice'],
-  });
-  const subs: any[] = list.data ?? [];
   const sub = subs.find(grantsAccess) ?? subs[0] ?? null;
-  if (sub) await saveRow(c, sub, customerId);
+  if (sub) {
+    await saveRow(c, sub, customerId!);
+  } else if (stale && row) {
+    // Forget ids that only existed in the other mode, so the record is honest.
+    await admin().from('user_subscriptions').update({
+      status: 'none', stripe_subscription_id: null, stripe_customer_id: null,
+      cancel_at_period_end: false, updated_at: new Date().toISOString(),
+    }).eq('id', row.id);
+  }
   return { sub, customerId };
 }
 

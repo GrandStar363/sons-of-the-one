@@ -7,6 +7,10 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # Stripe LIVE publishable key (public by design: it ships in every page).
+  # The secret key lives only in Supabase secrets. Remove this line to go back
+  # to the test key set in the Netlify UI.
+  VITE_STRIPE_LIVE_PUBLISHABLE_KEY = "pk_live_51UEGcxLfsMwtRrDIpoVdTF4OrqZlkyO9acB1zCuLZvljZonEyR2QfeiA2HZnkDoYz8dA62HLGWYuCisSDjiQbfwd000qnwxObw"
 
 # SPA routing (/admin, /reset-password) and service-worker caching are handled
 # by app/public/_redirects and app/public/_headers.

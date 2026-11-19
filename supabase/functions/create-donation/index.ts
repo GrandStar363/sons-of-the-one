@@ -107,9 +107,9 @@ Deno.serve(async (req) => {
           donor_name: name || 'Anonymous Donor',
           message: message || '',
           show_on_wall: showOnWall ? 'true' : 'false',
-          app: 'divine_word_bible'
+          app: 'sons_of_the_one'
         },
-        description: `Donation of Growth - Divine Word Bible App`
+        description: 'Donation — Sons of the One'
       })
     });
 
