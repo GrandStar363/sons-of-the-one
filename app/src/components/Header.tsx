@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Book, Search, Menu, X, Bookmark, Clock, Heart, User, LogOut, Loader2, Users, Footprints, Droplets, Brain, UsersRound, Headphones, GitCompare, Bell, Church, CalendarDays, PenLine, Sparkles, Crown, Gift, CreditCard, History, Lightbulb, Calendar, Mail, Settings, GraduationCap, Award, Trophy, Shield, Swords } from 'lucide-react';
 
 
+import AddToHomeScreen from './AddToHomeScreen';
 import BibleVersionSelector from './BibleVersionSelector';
 
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -25,6 +26,13 @@ interface HeaderProps {
   onOpenPrivateWorkspace: () => void;
 }
 
+
+// Which of the first seven page links fit in the bar at each width; the rest
+// are listed under "More" instead (MORE_VISIBILITY is the mirror image).
+const NAV_VISIBILITY = ['flex', 'flex', 'flex', 'hidden xl:flex', 'hidden 2xl:flex', 'hidden 2xl:flex', 'hidden 2xl:flex'];
+const MORE_VISIBILITY: Record<number, string> = { 3: 'flex xl:hidden', 4: 'flex 2xl:hidden', 5: 'flex 2xl:hidden', 6: 'flex 2xl:hidden' };
+// Words on the action buttons only when there's plenty of room; icons otherwise.
+const ACTION_LABEL = 'hidden min-[1700px]:inline';
 
 const Header: React.FC<HeaderProps> = ({ 
   onNavigate, 
@@ -117,17 +125,21 @@ const Header: React.FC<HeaderProps> = ({
   return (
 
     <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-[#0c1929]/98 via-[#0f2942]/98 to-[#0c1929]/98 backdrop-blur-md border-b border-[#14B8A6]/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20">
+      {/* The bar adapts to the window: page links move into "More" and the
+          action buttons become icons as space runs out, so everything —
+          including the account menu with Sign Out — stays on screen. */}
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between gap-2 h-16 sm:h-20">
           {/* Logo */}
           <button 
             onClick={() => onNavigate('home')}
-            className="flex items-center space-x-3 group"
+            className="flex shrink-0 items-center space-x-3 group"
+            aria-label="Sons' of The One — Home"
           >
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-[#14B8A6] via-[#0D9488] to-[#0F766E] flex items-center justify-center shadow-lg glow-teal group-hover:scale-105 transition-transform">
               <Book className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
-            <div className="hidden sm:block">
+            <div className="hidden sm:block lg:hidden xl:block">
               <h1 className="text-xl font-serif font-bold italic text-white">
                 <span className="text-[#F59E0B] text-glow-amber">Sons' of The One</span>
               </h1>
@@ -138,12 +150,12 @@ const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {navItems.slice(0, 7).map((item) => (
+          <nav className="hidden lg:flex min-w-0 items-center space-x-1">
+            {navItems.slice(0, 7).map((item, i) => (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`px-3 py-2 rounded-lg font-medium transition-all flex items-center space-x-2 text-sm ${
+                className={`${NAV_VISIBILITY[i]} shrink-0 whitespace-nowrap px-3 py-2 rounded-lg font-medium transition-all items-center space-x-2 text-sm ${
                   currentSection === item.id
                     ? 'bg-gradient-to-r from-[#14B8A6]/30 to-[#3B82F6]/30 text-[#5EEAD4] border border-[#14B8A6]/50'
                     : 'text-white/80 hover:text-[#5EEAD4] hover:bg-[#14B8A6]/10'
@@ -155,19 +167,19 @@ const Header: React.FC<HeaderProps> = ({
             ))}
             
             {/* More dropdown for additional items */}
-            <div className="relative group">
-              <button className="px-3 py-2 rounded-lg font-medium text-white/80 hover:text-[#5EEAD4] hover:bg-[#14B8A6]/10 transition-all flex items-center space-x-1 text-sm">
+            <div className="relative group shrink-0">
+              <button className="px-3 py-2 rounded-lg font-medium text-white/80 hover:text-[#5EEAD4] hover:bg-[#14B8A6]/10 transition-all flex items-center space-x-1 text-sm" aria-haspopup="menu">
                 <span>More</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-[#0f2942] border border-[#14B8A6]/30 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                {navItems.slice(7).map((item) => (
+              <div className="absolute right-0 mt-2 w-52 max-h-[75vh] overflow-y-auto bg-[#0f2942] border border-[#14B8A6]/30 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+                {navItems.slice(3).map((item, j) => (
                   <button
                     key={item.id}
                     onClick={() => onNavigate(item.id)}
-                    className={`w-full flex items-center space-x-2 px-4 py-3 text-sm transition-colors first:rounded-t-xl last:rounded-b-xl ${
+                    className={`${MORE_VISIBILITY[j + 3] ?? 'flex'} w-full items-center space-x-2 px-4 py-3 text-sm transition-colors first:rounded-t-xl last:rounded-b-xl ${
                       currentSection === item.id
                         ? 'bg-[#14B8A6]/20 text-[#5EEAD4]'
                         : 'text-white/80 hover:bg-[#14B8A6]/10 hover:text-[#5EEAD4]'
@@ -194,7 +206,7 @@ const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex shrink-0 items-center space-x-2">
             {/* Sync Indicator */}
             {syncing && (
               <div className="flex items-center space-x-1 text-[#5EEAD4] text-sm">
@@ -207,29 +219,35 @@ const Header: React.FC<HeaderProps> = ({
             {isOwner && (
               <button
                 onClick={onOpenPrivateWorkspace}
-                className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-lg shadow-purple-500/25"
+                title="My Workspace"
+                aria-label="My Workspace"
+                className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-lg shadow-purple-500/25"
               >
                 <Shield className="w-4 h-4" />
-                <span>My Workspace</span>
+                <span className={ACTION_LABEL}>My Workspace</span>
               </button>
             )}
 
             {/* Membership Button - Desktop */}
             <button
               onClick={onOpenSubscription}
-              className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg shadow-amber-500/25"
+              title="Membership"
+              aria-label="Membership"
+              className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium rounded-lg hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg shadow-amber-500/25"
             >
               <Crown className="w-4 h-4" />
-              <span>Membership</span>
+              <span className={ACTION_LABEL}>Membership</span>
             </button>
 
             {/* Donate Button - Desktop */}
             <button
               onClick={onOpenDonation}
-              className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-medium rounded-lg hover:from-rose-600 hover:to-pink-700 transition-all shadow-lg shadow-rose-500/25"
+              title="Give"
+              aria-label="Give"
+              className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white text-sm font-medium rounded-lg hover:from-rose-600 hover:to-pink-700 transition-all shadow-lg shadow-rose-500/25"
             >
               <Gift className="w-4 h-4" />
-              <span>Give</span>
+              <span className={ACTION_LABEL}>Give</span>
             </button>
 
             {/* Bible Version Selector - Desktop */}
@@ -271,14 +289,16 @@ const Header: React.FC<HeaderProps> = ({
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-[#14B8A6]/10 transition-colors"
+                  title="Your account (profile, settings, Sign Out)"
+                  aria-label="Your account"
+                  className="flex shrink-0 items-center space-x-2 p-2 rounded-lg hover:bg-[#14B8A6]/10 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F59E0B] to-[#D97706] flex items-center justify-center glow-amber">
                     <span className="text-white font-semibold text-sm">
                       {displayName.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <span className="hidden sm:inline text-white/80 text-sm">{displayName}</span>
+                  <span className="hidden min-[1800px]:inline max-w-[10rem] truncate text-white/80 text-sm">{displayName}</span>
                 </button>
 
                 {userMenuOpen && (
@@ -347,6 +367,10 @@ const Header: React.FC<HeaderProps> = ({
                         <Settings className="w-4 h-4" />
                         <span>Settings</span>
                       </button>
+                      <AddToHomeScreen
+                        onDone={() => setUserMenuOpen(false)}
+                        className="w-full flex items-center space-x-2 px-4 py-3 text-white/80 hover:bg-[#14B8A6]/10 hover:text-[#5EEAD4] transition-colors border-b border-[#14B8A6]/10"
+                      />
                       <button
                         onClick={() => {
                           setUserMenuOpen(false);
@@ -471,6 +495,10 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             ))}
             
+            <AddToHomeScreen
+              className="w-full flex items-center space-x-3 px-4 py-3 mt-4 bg-[#14B8A6]/15 text-[#5EEAD4] font-medium rounded-lg border border-[#14B8A6]/30 hover:bg-[#14B8A6]/25 transition-all"
+            />
+
             {/* Mobile Auth Button - Sign In or Sign Out */}
             {user ? (
               <button

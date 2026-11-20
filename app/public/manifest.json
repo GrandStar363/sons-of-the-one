@@ -9,19 +9,35 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/placeholder.svg",
+      "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/placeholder.svg",
+      "src": "/icon-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
-  "categories": ["education", "books", "lifestyle"],
+  "categories": [
+    "education",
+    "books",
+    "lifestyle"
+  ],
   "lang": "en-US",
   "dir": "ltr",
   "prefer_related_applications": false,
@@ -33,22 +49,41 @@
       "name": "Read Bible",
       "short_name": "Bible",
       "description": "Open the Bible reader",
-      "url": "/?section=bible",
-      "icons": [{ "src": "/placeholder.svg", "sizes": "96x96" }]
+      "url": "/#/bible",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "My Bookmarks",
       "short_name": "Bookmarks",
       "description": "View your saved bookmarks",
-      "url": "/?section=bookmarks",
-      "icons": [{ "src": "/placeholder.svg", "sizes": "96x96" }]
+      "url": "/#/bookmarks",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Daily Reading",
       "short_name": "Daily",
       "description": "Continue your daily reading plan",
-      "url": "/?section=daily-reading",
-      "icons": [{ "src": "/placeholder.svg", "sizes": "96x96" }]
+      "url": "/#/daily-reading",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
-  ]
+  ],
+  "id": "/"
 }
