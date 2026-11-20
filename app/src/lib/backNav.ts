@@ -53,6 +53,11 @@ export const SECTION_TITLES: Record<string, string> = {
 let depth = 0;
 const openSubs = new Set<string>();
 
+// The activity tracker (lib/activity.ts) listens for page changes here.
+const pageListeners = new Set<() => void>();
+export const onPageChange = (fn: () => void) => { pageListeners.add(fn); };
+function pageChanged() { pageListeners.forEach((fn) => setTimeout(fn, 0)); }
+
 export const currentEntry = (): NavEntry | null => {
   const s = window.history.state;
   return s && s.sog ? (s as NavEntry) : null;
@@ -75,6 +80,7 @@ export function sectionFromUrl(): string | null {
 export function initHistory(entry: Omit<NavEntry, 'sog' | 'depth'>) {
   depth = 0;
   window.history.replaceState({ ...entry, sog: true, depth: 0 }, '', urlFor(entry.section));
+  pageChanged();
 }
 
 /** Update the current entry in place (e.g. the next Bible chapter). */
@@ -83,6 +89,7 @@ export function replaceEntry(patch: Partial<NavEntry>) {
   if (!cur) return;
   const next = { ...cur, ...patch };
   window.history.replaceState(next, '', urlFor(next.section));
+  pageChanged();
 }
 
 /** Add a step. Remembers the scroll position of the step being left. */
@@ -91,6 +98,7 @@ export function pushEntry(entry: Omit<NavEntry, 'sog' | 'depth'>) {
   if (cur) window.history.replaceState({ ...cur, scrollY: window.scrollY }, '');
   depth = (cur?.depth ?? depth) + 1;
   window.history.pushState({ ...entry, sog: true, depth }, '', urlFor(entry.section));
+  pageChanged();
 }
 
 /** Called by AppLayout on every popstate, before it reads the entry. */

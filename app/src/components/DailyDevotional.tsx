@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sun, BookOpen, ChevronRight, Share2 } from 'lucide-react';
 import { featuredVerses } from '@/data/bibleData';
 import ShareModal from './ShareModal';
+import { fetchTodaysDevotional, usePublished } from '@/lib/publishedContent';
 
 interface DailyDevotionalProps {
   onReadMore: (reference: string) => void;
@@ -12,7 +13,14 @@ const DailyDevotional: React.FC<DailyDevotionalProps> = ({ onReadMore }) => {
   
   // Get today's verse based on day of year
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-  const todayVerse = featuredVerses[dayOfYear % featuredVerses.length];
+  const builtIn = featuredVerses[dayOfYear % featuredVerses.length];
+  // A devotional the admin published for today replaces the built-in one.
+  const devotional = usePublished(fetchTodaysDevotional);
+  const todayVerse = devotional && devotional.reference
+    ? { reference: devotional.reference, text: devotional.scriptureText || builtIn.text, theme: devotional.title }
+    : builtIn;
+  const reflection = devotional?.content
+    ?? `As children of God, we are called to walk in the Spirit, embracing our identity as sons and daughters of the Most High. This verse reminds us that through faith in Christ Jesus, we have been adopted into God's family—heirs of His promises and partakers of His divine nature.`;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -37,7 +45,7 @@ const DailyDevotional: React.FC<DailyDevotionalProps> = ({ onReadMore }) => {
   const shareContent = {
     type: 'devotional' as const,
     title: `Daily Devotional - ${formatDate()}`,
-    text: todayVerse.text,
+    text: devotional ? `${todayVerse.text}\n\n${reflection}` : todayVerse.text,
     reference: todayVerse.reference,
     theme: todayVerse.theme,
   };
@@ -100,11 +108,9 @@ const DailyDevotional: React.FC<DailyDevotionalProps> = ({ onReadMore }) => {
 
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">Reflection</h3>
-              <p className="text-white/70 leading-relaxed">
-                As children of God, we are called to walk in the Spirit, embracing our identity as sons and daughters of the Most High. 
-                This verse reminds us that through faith in Christ Jesus, we have been adopted into God's family—
-                heirs of His promises and partakers of His divine nature.
-              </p>
+              {devotional && <p className="text-[#FCD34D] font-serif text-xl">{devotional.title}</p>}
+              <p className="text-white/70 leading-relaxed whitespace-pre-line">{reflection}</p>
+              {devotional?.author && <p className="text-white/50 text-sm">— {devotional.author}</p>}
               <div className="flex flex-wrap gap-4">
                 <button
                   onClick={() => onReadMore(todayVerse.reference)}

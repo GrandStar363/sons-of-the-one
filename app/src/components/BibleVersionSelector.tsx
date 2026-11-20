@@ -36,7 +36,7 @@ const BibleVersionSelector: React.FC<BibleVersionSelectorProps> = ({
         {isOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-            <div className="absolute top-full right-0 mt-2 w-56 bg-[#081420] border border-white/20 rounded-xl shadow-2xl z-50 overflow-hidden">
+            <div className="absolute top-full right-0 mt-2 w-64 bg-[#081420] border border-white/20 rounded-xl shadow-2xl z-50 max-h-[70vh] overflow-y-auto">
               {availableVersions.map(version => (
                 <button
                   key={version.id}

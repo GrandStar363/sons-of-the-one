@@ -5,9 +5,9 @@
 // a bump is what evicts browsers holding bad entries. v1 cached API responses
 // permanently (see the fetch handler), so anyone who loaded the app before this
 // change is holding stale data until these names change.
-const CACHE_NAME = 'bible-study-v3';
-const STATIC_CACHE = 'static-v3';
-const DYNAMIC_CACHE = 'dynamic-v3';
+const CACHE_NAME = 'bible-study-v4';
+const STATIC_CACHE = 'static-v4';
+const DYNAMIC_CACHE = 'dynamic-v4';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [

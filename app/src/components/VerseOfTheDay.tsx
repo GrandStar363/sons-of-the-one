@@ -5,6 +5,8 @@ import { featuredVerses } from '@/data/bibleData';
 import { useAppContext, BIBLE_VERSIONS } from '@/contexts/AppContext';
 import { toast } from '@/components/ui/use-toast';
 import { useSyncedState } from '@/hooks/useSyncedState';
+import { fetchTodaysVerse } from '@/lib/publishedContent';
+import { fetchVerse } from '@/lib/bibleText';
 import {
   Sun,
   Heart,
@@ -107,10 +109,31 @@ const VerseOfTheDay: React.FC<VerseOfTheDayProps> = ({
   const [loading, setLoading] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
 
-  // Get the display version (KJV if API not configured for selected version)
-  const displayVersion = selectedVersion.requiresApi && !apiKeyConfigured
-    ? BIBLE_VERSIONS.find(v => v.isDefault) || selectedVersion
-    : selectedVersion;
+  // The verse in the member's chosen version (built-in text is the KJV).
+  const [versionText, setVersionText] = useState<{ key: string; text: string } | null>(null);
+  const isAdminVerse = todayVerse.theme === 'Featured';
+  const versionKey = `${selectedVersion.apiId}|${todayVerse.reference}`;
+  useEffect(() => {
+    if (isAdminVerse || selectedVersion.apiId === 'kjv') return;
+    let alive = true;
+    fetchVerse(selectedVersion.apiId, todayVerse.reference)
+      .then((text) => { if (alive && text) setVersionText({ key: versionKey, text }); });
+    return () => { alive = false; };
+  }, [versionKey, isAdminVerse]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shownInVersion = !isAdminVerse && selectedVersion.apiId !== 'kjv' && versionText?.key === versionKey;
+  const kjv = BIBLE_VERSIONS.find((v) => v.isDefault) ?? selectedVersion;
+  const displayVersion = isAdminVerse
+    ? { ...kjv, abbreviation: (todayVerse as { translation?: string }).translation || 'KJV', name: (todayVerse as { translation?: string }).translation || 'KJV' }
+    : shownInVersion || selectedVersion.apiId === 'kjv' ? selectedVersion : kjv;
+  const verseText = shownInVersion ? versionText!.text : todayVerse.text;
+  void apiKeyConfigured;
+
+  // A verse the admin featured for today replaces the built-in rotation.
+  useEffect(() => {
+    let alive = true;
+    fetchTodaysVerse().then((v) => { if (alive && v) setTodayVerse(v); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // Check if push notifications are supported
   useEffect(() => {
@@ -348,9 +371,6 @@ const VerseOfTheDay: React.FC<VerseOfTheDayProps> = ({
             <span className="flex items-center space-x-1 px-3 py-1.5 bg-white/5 border border-white/20 rounded-full text-white/60 text-xs">
               <Globe className="w-3 h-3" />
               <span>{displayVersion.abbreviation}</span>
-              {selectedVersion.id !== displayVersion.id && (
-                <span className="text-amber-400">(default)</span>
-              )}
             </span>
           </div>
 
@@ -364,7 +384,7 @@ const VerseOfTheDay: React.FC<VerseOfTheDayProps> = ({
               <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
             </svg>
             <p className="text-xl sm:text-2xl lg:text-3xl font-serif text-white leading-relaxed mb-6">
-              {todayVerse.text}
+              {verseText}
             </p>
             <p className="text-[#F59E0B] font-semibold text-lg">
               — {todayVerse.reference}
@@ -411,7 +431,7 @@ const VerseOfTheDay: React.FC<VerseOfTheDayProps> = ({
             {/* Share: the phone's share sheet, or a menu drawn above the card */}
             <ShareButton
               title={`Verse of the Day — ${todayVerse.reference}`}
-              text={`"${todayVerse.text}"\n— ${todayVerse.reference} (${displayVersion.abbreviation})`}
+              text={`"${verseText}"\n— ${todayVerse.reference} (${displayVersion.abbreviation})`}
               buttonClassName="inline-flex items-center space-x-2 px-5 py-2.5 bg-white/5 text-white/80 border border-white/20 rounded-xl hover:bg-white/10 transition-all font-medium"
             />
 

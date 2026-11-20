@@ -217,6 +217,7 @@ const CommunityPrayerWall: React.FC<CommunityPrayerWallProps> = ({ user, onOpenA
 
   // Get verses based on selected version
   const currentVerses = VERSE_TRANSLATIONS[selectedVersion.id] || VERSE_TRANSLATIONS.kjv1611;
+  const verseLabel = VERSE_TRANSLATIONS[selectedVersion.id] ? selectedVersion.abbreviation : 'KJV';
 
   // Format relative time
   const formatTimeAgo = (date: Date): string => {
@@ -327,7 +328,7 @@ const CommunityPrayerWall: React.FC<CommunityPrayerWallProps> = ({ user, onOpenA
           <p className="text-amber-400 font-bold italic text-4xl sm:text-5xl lg:text-6xl mt-6 leading-tight">
             "{currentVerses.james516b}"
           </p>
-          <p className="text-amber-400 font-bold text-3xl sm:text-4xl mt-4">— James 5:16b ({selectedVersion.abbreviation})</p>
+          <p className="text-amber-400 font-bold text-3xl sm:text-4xl mt-4">— James 5:16b ({verseLabel})</p>
 
           {/* Bible Version Selector */}
           <div className="mt-8 flex justify-center">
@@ -693,13 +694,13 @@ const CommunityPrayerWall: React.FC<CommunityPrayerWallProps> = ({ user, onOpenA
           <p className="text-white/80 text-lg italic mb-4">
             "{currentVerses.philippians46}"
           </p>
-          <p className="text-rose-400 font-semibold mb-8">— Philippians 4:6 ({selectedVersion.abbreviation})</p>
+          <p className="text-rose-400 font-semibold mb-8">— Philippians 4:6 ({verseLabel})</p>
           
           {/* James 5:16b - EXTRA LARGE, BOLD, and GOLD - Identical to Top Verse */}
           <p className="text-amber-400 font-bold italic text-4xl sm:text-5xl lg:text-6xl mt-10 leading-tight">
             "{currentVerses.james516b}"
           </p>
-          <p className="text-amber-400 font-bold text-3xl sm:text-4xl mt-4">— James 5:16b ({selectedVersion.abbreviation})</p>
+          <p className="text-amber-400 font-bold text-3xl sm:text-4xl mt-4">— James 5:16b ({verseLabel})</p>
         </div>
 
       </div>

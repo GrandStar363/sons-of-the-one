@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Bookmark, BookmarkCheck, Copy, Check, Share2, ChevronLeft, ChevronRight, 
   Highlighter, MessageSquare, Globe, Link2, Map, ChevronDown, ChevronUp,
-  X, Layers
+  X, Layers, Loader2, RefreshCw
 } from 'lucide-react';
 import { sampleScriptures } from '@/data/bibleData';
 import { useAppContext, BIBLE_VERSIONS } from '@/contexts/AppContext';
@@ -10,6 +10,7 @@ import ShareModal from './ShareModal';
 import CrossReferencePanel from './CrossReferencePanel';
 import VerseConnectionMap from './VerseConnectionMap';
 import { getCrossReferences } from '@/data/crossReferences';
+import { fetchChapter, type ChapterText } from '@/lib/bibleText';
 interface BookmarkItem {
   reference: string;
   dateAdded: string;
@@ -68,13 +69,28 @@ const ScriptureReader: React.FC<ScriptureReaderProps> = ({
   const [crossRefVerse, setCrossRefVerse] = useState<{ reference: string; text: string } | null>(null);
   const [showConnectionMap, setShowConnectionMap] = useState(false);
 
-  // Get the display version (KJV if API not configured for selected version)
-  const displayVersion = selectedVersion.requiresApi && !apiKeyConfigured
-    ? BIBLE_VERSIONS.find(v => v.isDefault) || selectedVersion
-    : selectedVersion;
+  // Every listed version is the full Bible, loaded chapter by chapter.
+  const displayVersion = selectedVersion;
+  void apiKeyConfigured; void BIBLE_VERSIONS;
 
   const chapterKey = `${book} ${chapter}`;
-  const scriptureData = sampleScriptures[chapterKey];
+  const builtIn = displayVersion.apiId === 'kjv' ? sampleScriptures[chapterKey] : undefined;
+  const [loaded, setLoaded] = useState<{ key: string; data: ChapterText } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const loadKey = `${displayVersion.apiId}|${chapterKey}`;
+
+  useEffect(() => {
+    let alive = true;
+    setLoadError(null);
+    fetchChapter(displayVersion.apiId, book, chapter)
+      .then((data) => { if (alive) setLoaded({ key: loadKey, data }); })
+      .catch((e: Error) => { if (alive) setLoadError(e.message); });
+    return () => { alive = false; };
+  }, [loadKey, retry]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scriptureData: ChapterText | undefined =
+    loaded?.key === loadKey ? loaded.data : builtIn;
 
   const handleCopyVerse = async (verseNum: number, text: string) => {
     const reference = `${book} ${chapter}:${verseNum}`;
@@ -136,11 +152,22 @@ const ScriptureReader: React.FC<ScriptureReaderProps> = ({
           </span>
         </div>
         
-        <p className="text-white/60 mb-6">
-          This chapter is available in the full {displayVersion.abbreviation} Bible. 
-          <br />
-          Select Romans 8, John 1, Galatians 3, Genesis 1, Psalm 23, Matthew 5, or Revelation 21 for sample content.
-        </p>
+        {loadError ? (
+          <div className="mb-6">
+            <p className="text-white/70 mb-4">{loadError}</p>
+            <button
+              onClick={() => setRetry((n) => n + 1)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#14B8A6]/20 text-[#5EEAD4] border border-[#14B8A6]/40 rounded-lg hover:bg-[#14B8A6]/30 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" /> Try again
+            </button>
+          </div>
+        ) : (
+          <p className="text-white/60 mb-6 flex items-center justify-center gap-2" role="status">
+            <Loader2 className="w-5 h-5 animate-spin text-[#14B8A6]" />
+            Opening {book} {chapter} ({displayVersion.abbreviation})…
+          </p>
+        )}
         <div className="flex items-center justify-center space-x-4">
           <button
             onClick={() => onNavigate('prev')}
@@ -391,10 +418,8 @@ const ScriptureReader: React.FC<ScriptureReaderProps> = ({
             <div className="bg-white/5 px-6 py-3 border-t border-[#14B8A6]/20">
               <p className="text-xs text-white/40 text-center">
                 {displayVersion.name} ({displayVersion.abbreviation}) • {scriptureData.verses.length} verses
-                {selectedVersion.id !== displayVersion.id && (
-                  <span className="text-amber-400/60 ml-2">
-                    (Showing default - {selectedVersion.abbreviation} requires API)
-                  </span>
+                {displayVersion.license && displayVersion.license !== 'Public Domain' && (
+                  <span className="ml-2">• {displayVersion.license}</span>
                 )}
               </p>
             </div>

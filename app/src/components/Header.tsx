@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Book, Search, Menu, X, Bookmark, Clock, Heart, User, LogOut, Loader2, Users, Footprints, Droplets, Brain, UsersRound, Headphones, GitCompare, Bell, Church, CalendarDays, PenLine, Sparkles, Crown, Gift, CreditCard, History, Lightbulb, Calendar, Mail, Settings, GraduationCap, Award, Trophy, Shield, Swords } from 'lucide-react';
+import { Book, Search, Menu, X, Bookmark, Clock, Heart, User, LogOut, Loader2, Users, Footprints, Droplets, Brain, UsersRound, Headphones, GitCompare, Bell, Church, CalendarDays, PenLine, Sparkles, Crown, Gift, CreditCard, History, Lightbulb, Calendar, Mail, Settings, GraduationCap, Award, Trophy, Shield, Swords, ChevronDown } from 'lucide-react';
 
 
 import AddToHomeScreen from './AddToHomeScreen';
@@ -7,6 +7,7 @@ import BibleVersionSelector from './BibleVersionSelector';
 
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface HeaderProps {
   onNavigate: (section: string) => void;
@@ -51,6 +52,7 @@ const Header: React.FC<HeaderProps> = ({
   onOpenProfile,
   onOpenPrivateWorkspace
 }) => {
+  const { selectedVersion, setSelectedVersion, availableVersions } = useAppContext();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -411,13 +413,27 @@ const Header: React.FC<HeaderProps> = ({
       {menuOpen && (
         <div className="lg:hidden bg-gradient-to-b from-[#0f2942] to-[#0c1929] border-t border-[#14B8A6]/20">
           <nav className="px-4 py-4 space-y-2 max-h-[70vh] overflow-y-auto">
-            {/* Bible Version Display - Mobile (KJV 1611 Only) */}
+            {/* Bible version - phone menu (the phone's own picker) */}
             <div className="mb-4 pb-4 border-b border-white/10">
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-2 px-2">Bible Translation</p>
-              <div className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-[#F59E0B]/20 to-[#D97706]/20 border border-[#F59E0B]/40 rounded-xl text-[#F59E0B]">
-                <Book className="w-4 h-4 text-[#F59E0B]" />
-                <span className="font-medium">KJV 1611</span>
-                <span className="text-white/50 text-xs">King James Version 1611</span>
+              <label htmlFor="mobile-bible-version" className="block text-white/50 text-xs uppercase tracking-wider mb-2 px-2">Bible Version</label>
+              <div className="relative flex items-center px-4 py-2.5 bg-gradient-to-r from-[#F59E0B]/20 to-[#D97706]/20 border border-[#F59E0B]/40 rounded-xl text-[#F59E0B]">
+                <Book className="w-4 h-4 text-[#F59E0B] shrink-0" />
+                <select
+                  id="mobile-bible-version"
+                  value={selectedVersion.id}
+                  onChange={(e) => {
+                    const v = availableVersions.find((x) => x.id === e.target.value);
+                    if (v) setSelectedVersion(v);
+                  }}
+                  className="ml-2 w-full appearance-none bg-transparent font-medium text-[#F59E0B] focus:outline-none"
+                >
+                  {availableVersions.map((v) => (
+                    <option key={v.id} value={v.id} className="bg-[#0c1929] text-white">
+                      {v.abbreviation} — {v.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 shrink-0 pointer-events-none" />
               </div>
             </div>
 

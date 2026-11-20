@@ -32,10 +32,9 @@ const FeaturedVerses: React.FC<FeaturedVersesProps> = ({ bookmarks, onToggleBook
   const versesPerPage = 4;
   const totalPages = Math.ceil(featuredVerses.length / versesPerPage);
 
-  // Get the display version (KJV if API not configured for selected version)
-  const displayVersion = selectedVersion.requiresApi && !apiKeyConfigured
-    ? BIBLE_VERSIONS.find(v => v.isDefault) || selectedVersion
-    : selectedVersion;
+  // These verses are King James text, so they are labelled KJV whatever version is chosen.
+  const displayVersion = BIBLE_VERSIONS.find(v => v.isDefault) || selectedVersion;
+  void apiKeyConfigured;
 
   const currentVerses = featuredVerses.slice(
     currentPage * versesPerPage,

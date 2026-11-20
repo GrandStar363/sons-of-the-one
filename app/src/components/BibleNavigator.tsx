@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Book, ChevronRight, ChevronDown, Search } from 'lucide-react';
 import { oldTestament, newTestament, allBooks } from '@/data/bibleData';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface BibleNavigatorProps {
   onSelectBook: (book: string, chapter: number) => void;
@@ -9,6 +10,7 @@ interface BibleNavigatorProps {
 }
 
 const BibleNavigator: React.FC<BibleNavigatorProps> = ({ onSelectBook, selectedBook, selectedChapter }) => {
+  const { selectedVersion } = useAppContext();
   const [activeTestament, setActiveTestament] = useState<'old' | 'new'>('new');
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +46,7 @@ const BibleNavigator: React.FC<BibleNavigatorProps> = ({ onSelectBook, selectedB
           </div>
           <div>
             <h2 className="text-xl font-serif font-bold text-[#f5f0e6]">Scripture Navigator</h2>
-            <p className="text-sm text-[#f5f0e6]/60">66 Books • KJV 1611</p>
+            <p className="text-sm text-[#f5f0e6]/60">66 Books • {selectedVersion.abbreviation}</p>
           </div>
         </div>
 

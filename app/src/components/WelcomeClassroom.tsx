@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, BookOpen, Sparkles } from 'lucide-react';
+import { ArrowRight, BookOpen, Globe, Sparkles } from 'lucide-react';
 
 // "One Classroom teaching" — the ministry's front door, shown at the start of
 // each visit. "Enter The Classroom" continues into the app (or to sign-in for
@@ -103,6 +103,22 @@ const WelcomeClassroom: React.FC<WelcomeClassroomProps> = ({ onEnter }) => (
         <ArrowRight className="h-6 w-6" aria-hidden="true" />
       </button>
       <p className="mt-4 text-sm text-white/50">Begin your spiritual journey today</p>
+
+      {/* Bible versions */}
+      <section className="mt-8 w-full rounded-2xl border border-[#F59E0B]/30 bg-[#F59E0B]/5 px-5 py-5 text-left" aria-label="Bible versions">
+        <div className="flex items-start gap-3">
+          <Globe className="mt-0.5 h-6 w-6 shrink-0 text-[#F59E0B]" aria-hidden="true" />
+          <div>
+            <p className="font-semibold text-white">Read in the Bible version you prefer</p>
+            <p className="mt-1 text-[15px] leading-relaxed text-white/75">
+              The King James Version is the default. Switch at any time to the Berean Standard, World English,
+              American Standard, Douay-Rheims and more, or read in Español, 中文, 한국어, Русский and other
+              languages. Just tap the <span className="font-semibold text-[#F59E0B]">version button</span> at the
+              top of the app.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Scripture */}
       <blockquote className="mt-10">

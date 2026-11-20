@@ -97,7 +97,8 @@ export default function AdminActivityMonitor() {
           action: 'get_analytics',
           startDate,
           endDate,
-          limit: 100
+          tzOffset: new Date().getTimezoneOffset(),
+          adminToken: localStorage.getItem('adminToken')
         }
       });
 
@@ -113,7 +114,7 @@ export default function AdminActivityMonitor() {
   const fetchRealtime = useCallback(async () => {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('activity-tracker', {
-        body: { action: 'get_realtime', minutes: 60 }
+        body: { action: 'get_realtime', minutes: 60, adminToken: localStorage.getItem('adminToken') }
       });
 
       if (fnError) throw fnError;
@@ -155,7 +156,8 @@ export default function AdminActivityMonitor() {
           action: 'export',
           startDate,
           endDate,
-          format
+          format,
+          adminToken: localStorage.getItem('adminToken')
         }
       });
 
@@ -495,7 +497,7 @@ export default function AdminActivityMonitor() {
                     </div>
                     <div className="flex-1 text-left">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {user.userId.slice(0, 8)}...
+                        {user.name || user.email || `${user.userId.slice(0, 8)}...`}
                       </p>
                       <p className="text-xs text-gray-500">
                         Last active: {formatTimeAgo(user.lastActive)}
@@ -560,7 +562,7 @@ export default function AdminActivityMonitor() {
                       {activity.page_path || 'No page'} 
                       {activity.user_id && (
                         <span className="ml-2 text-purple-600">
-                          User: {activity.user_id.slice(0, 8)}...
+                          {activity.user_name || activity.user_email || `User ${activity.user_id.slice(0, 8)}...`}
                         </span>
                       )}
                     </p>

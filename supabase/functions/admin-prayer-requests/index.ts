@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     const { action, requestId, adminId, status, rejectionReason, page = 1, limit = 20, filterStatus, requestData, adminToken } = await req.json();
 
     // Previously unauthenticated: reachable by anyone with the anon key.
-    await requireAdmin(adminToken);
+    const who = await requireAdmin(adminToken);
 
     if (action === 'list') {
       let query = supabase
@@ -49,9 +49,23 @@ Deno.serve(async (req) => {
         rejected: allRequests?.filter(r => r.status === 'rejected').length || 0
       };
 
+      // Members post title + request (+ name); the screen reads request_text /
+      // user_name / user_email, so fill those in, with the member's email.
+      const emails = new Map<string, string>();
+      for (const id of [...new Set((requests || []).map((r: any) => r.user_id).filter(Boolean))]) {
+        const { data } = await supabase.auth.admin.getUserById(id as string);
+        if (data?.user?.email) emails.set(id as string, data.user.email);
+      }
+      const shaped = (requests || []).map((r: any) => ({
+        ...r,
+        request_text: r.request_text || [r.title, r.request].filter(Boolean).join(' — '),
+        user_name: r.user_name || r.name || null,
+        user_email: r.user_email || emails.get(r.user_id) || null,
+      }));
+
       return new Response(JSON.stringify({
         success: true,
-        requests: requests || [],
+        requests: shaped,
         total: count || 0,
         page,
         totalPages: Math.ceil((count || 0) / limit),
@@ -62,8 +76,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'moderate') {
-      if (!requestId || !status || !adminId) {
-        throw new Error('Request ID, status, and admin ID are required');
+      if (!requestId || !status) {
+        throw new Error('Request ID and status are required');
       }
 
       if (!['approved', 'rejected'].includes(status)) {
@@ -72,14 +86,12 @@ Deno.serve(async (req) => {
 
       const updateData: any = {
         status,
-        moderated_by: adminId,
+        moderated_by: who.id,
         moderated_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
-      if (status === 'rejected' && rejectionReason) {
-        updateData.rejection_reason = rejectionReason;
-      }
+      updateData.rejection_reason = status === 'rejected' ? (rejectionReason || null) : null;
 
       const { data: request, error } = await supabase
         .from('prayer_requests')
