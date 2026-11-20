@@ -179,7 +179,7 @@ export default function AdminDashboard() {
 
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className={`hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
+        <aside className={`relative hidden lg:flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ${
           sidebarOpen ? 'w-64' : 'w-20'
         }`}>
           {/* Logo */}
@@ -253,6 +253,7 @@ export default function AdminDashboard() {
           {/* Toggle Button */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}
             className="absolute top-20 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50"
           >
             <ChevronRight className={`w-4 h-4 text-gray-600 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`} />
