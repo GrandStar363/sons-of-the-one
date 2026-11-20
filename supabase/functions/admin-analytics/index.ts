@@ -203,6 +203,10 @@ Deno.serve(async (req) => {
         totalDonations: donations.length,
         activeRecurringCount: members.monthlyDonors,
         monthlyRecurringRevenue: members.donationMrr,
+        recentDonations: donations.slice(0, 20).map((d) => ({
+          id: d.id, donor_name: d.name, amount: d.amount, created_at: d.created_at,
+          is_recurring: d.kind === 'monthly_donation', receipt_sent: true,
+        })),
         averageDonation: donations.length ? Math.round((sum(donations) / donations.length) * 100) / 100 : 0,
       },
     });
